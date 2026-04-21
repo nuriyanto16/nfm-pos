@@ -1,28 +1,19 @@
-# Stage 1: Build Flutter Web
-FROM debian:latest AS build-env
+# Gunakan image Flutter yang sudah stabil dan siap pakai
+FROM ghcr.io/cirruslabs/flutter:stable AS build-env
 
-# Install dependencies
-RUN apt-get update && apt-get install -y curl git wget unzip libgconf-2-4 gdb libstdc++6 libglu1-mesa fonts-droid-fallback lib32stdc++6 python3
-RUN apt-get clean
-
-# Clone the flutter repo
-RUN git clone https://github.com/flutter/flutter.git /usr/local/flutter
-
-# Set flutter path
-ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
-
-# Enable web
-RUN flutter config --enable-web
-
-# Copy project files
+# Set working directory
 WORKDIR /app
+
+# Copy file project
 COPY . .
 
-# Get dependencies and build
+# Ambil dependencies
 RUN flutter pub get
+
+# Build Flutter Web
 RUN flutter build web --release
 
-# Stage 2: Serve with Nginx
+# Stage 2: Serve dengan Nginx
 FROM nginx:alpine
 COPY --from=build-env /app/build/web /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
