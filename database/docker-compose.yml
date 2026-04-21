@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pos_postgres
+    environment:
+      POSTGRES_USER: pos_user
+      POSTGRES_PASSWORD: pos_password
+      POSTGRES_DB: pos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos_user -d pos_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: 
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: pos_backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_USER: pos_user
+      DB_PASSWORD: pos_password
+      DB_NAME: pos_db
+      DB_PORT: 5432
+      JWT_SECRET: supersecretkey_pos_2026
+      PORT: 8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

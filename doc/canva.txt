@@ -1,0 +1,113 @@
+CANVA FULL DESIGN BLUEPRINT (PRESENSIKITA)
+
+Ukuran: Presentation 16:9 (1920x1080)
+
+🧩 STYLE SET (WAJIB SET DULU DI CANVA)
+🎨 Colors (Save as Brand Kit)
+Navy: #1F2F4A
+Gold: #E5A11A
+White: #FFFFFF
+Light Grey: #F5F5F5
+🔤 Fonts
+Judul: Poppins SemiBold
+Isi: Inter / Poppins Regular
+📄 PAGE STRUCTURE (SIAP KETIK DI CANVA)
+🟦 PAGE 1 — COVER (HIGH IMPACT)
+Layout:
+Background: Navy full
+Logo: center top
+Title center
+Isi teks:
+PRESENSIKITA
+
+PROPOSAL PENAWARAN
+SISTEM POS & KITCHEN DISPLAY
+
+Solusi Digital Modern untuk Operasional Bisnis
+yang Cepat, Akurat, dan Terintegrasi
+
+Disusun oleh:
+Nuriyanto
+08782333900
+
+April 2026
+Styling:
+"PRESENSIKITA" → 44–52 font, bold, white
+Garis bawah title → gold line (2px)
+⚪ PAGE 2 — INTRO (CLEAN WHITE)
+Background: putih
+Layout:
+Title kiri atas
+Body text kiri align
+INTRODUCTION
+
+Dalam era digital saat ini, kecepatan layanan dan akurasi operasional menjadi kunci utama.
+
+PresensiKita menghadirkan sistem POS terintegrasi KDS yang membantu bisnis berjalan lebih cepat, rapi, dan real-time.
+
+Sistem ini dirancang untuk mendukung operasional modern dan scalable.
+🟦 PAGE 3 — MODULE (2 COLUMN PREMIUM)
+Background: light grey
+Layout:
+
+Buat 2 kolom box putih (rounded 12px)
+
+LEFT BOX:
+AUTH & MASTER DATA
+
+- Multi Role Access
+- Shift Management
+- Menu & Category
+- Variants & Add-ons
+- Tax & Discount
+- Payment Methods
+RIGHT BOX:
+POS & KDS SYSTEM
+
+- Order Management
+- Split Bill & Hold Order
+- Real-time Kitchen Display
+- Status Tracking Order
+- Print Receipt
+- Live Order Sync
+Styling:
+Box shadow ringan (20% opacity)
+Header gold underline
+🟨 PAGE 4 — PRICING (SALES PAGE)
+Background: Navy gradient
+Center card (WAJIB)
+
+Buat rectangle putih besar rounded 16px
+
+INVESTMENT PACKAGE
+
+✔ POS System
+✔ Kitchen Display System
+✔ Hosting Server
+✔ Thermal Printer Integration
+
+--------------------------------
+
+TOTAL INVESTASI
+
+Rp 15.000.000
+
+(Lima Belas Juta Rupiah)
+Styling:
+Harga: 40–48 font bold
+Warna harga: gold
+Tambahkan badge kecil:
+“ALL IN PACKAGE”
+⚪ PAGE 5 — CLOSING
+Background: white
+CLOSING
+
+Kami percaya sistem ini dapat membantu meningkatkan efisiensi dan profesionalitas bisnis Anda.
+
+Kami siap membantu implementasi dan penyesuaian sistem sesuai kebutuhan.
+
+Terima kasih atas kepercayaan Anda.
+
+Footer:
+
+Nuriyanto | PresensiKita | 08782333900

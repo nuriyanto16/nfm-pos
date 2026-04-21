@@ -1,0 +1,28 @@
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment Variables
+.env
+backend/.env
+frontend/.env
+
+# Local logs
+*.log
+backend/backend_stderr.log
+backend/backend_stdout.log
+
+# Build artifacts
+backend/main.exe
+backend/tmp_build.exe
+frontend/build/
+frontend/.dart_tool/
+
+# Database data
+database/pgdata/
+
+# OS files
+.DS_Store
+Thumbs.db

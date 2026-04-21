@@ -1,0 +1,524 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/dio_client.dart';
+
+// Auto-refresh kitchen orders every 5 seconds
+final kitchenOrdersProvider = StreamProvider.autoDispose<List<dynamic>>((ref) async* {
+  final dio = ref.read(dioProvider);
+
+  Future<List<dynamic>> fetchOrders() async {
+    final res = await dio.get('orders', queryParameters: {'status': 'Pending,Proses', 'limit': 100});
+    List<dynamic> allRows = [];
+    if (res.data is Map && res.data.containsKey('rows')) {
+      allRows = res.data['rows'] as List<dynamic>;
+    } else {
+      allRows = res.data as List<dynamic>;
+    }
+    return allRows.where((o) => o['status'] == 'Pending' || o['status'] == 'Proses').toList();
+  }
+
+  yield await fetchOrders();
+
+  await for (final _ in Stream.periodic(const Duration(seconds: 5))) {
+    yield await fetchOrders();
+  }
+});
+
+class KitchenDisplayScreen extends ConsumerStatefulWidget {
+  const KitchenDisplayScreen({super.key});
+
+  @override
+  ConsumerState<KitchenDisplayScreen> createState() => _KitchenDisplayScreenState();
+}
+
+class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
+  int _previousOrderCount = 0;
+  final Set<int> _newOrderIds = {};
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Proses':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ordersAsync = ref.watch(kitchenOrdersProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D1117),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF161B22),
+        foregroundColor: Colors.white,
+        title: Row(
+          children: [
+            const Icon(Icons.kitchen, color: Colors.orange),
+            const SizedBox(width: 8),
+            const Text('Kitchen Display System', style: TextStyle(color: Colors.white)),
+            const Spacer(),
+            // Live indicator
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            const Text('LIVE', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 16),
+            // Counter badge
+            ordersAsync.when(
+              data: (orders) {
+                final pendingCount = orders.where((o) => o['status'] == 'Pending').length;
+                final prosesCount = orders.where((o) => o['status'] == 'Proses').length;
+
+                // Detect new orders
+                if (orders.length > _previousOrderCount && _previousOrderCount > 0) {
+                  // New order arrived — highlight them
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.notifications_active, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text('🔔 ${orders.length - _previousOrderCount} pesanan baru masuk!'),
+                            ],
+                          ),
+                          backgroundColor: Colors.orange.shade800,
+                          duration: const Duration(seconds: 3),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  });
+                }
+                _previousOrderCount = orders.length;
+
+                return Row(
+                  children: [
+                    _CounterBadge(label: 'Antrian', count: pendingCount, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    _CounterBadge(label: 'Proses', count: prosesCount, color: Colors.blue),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+      body: ordersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+        error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: Colors.white))),
+        data: (orders) {
+          if (orders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
+                  const SizedBox(height: 16),
+                  const Text('Semua pesanan selesai!', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Tidak ada pesanan masuk', style: TextStyle(color: Colors.white54, fontSize: 14)),
+                  const SizedBox(height: 24),
+                  const _PulsingDot(),
+                  const SizedBox(height: 8),
+                  const Text('Menunggu pesanan baru...', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                ],
+              ),
+            );
+          }
+
+          // Sort: Pending first, then by oldest created_at
+          final sorted = List<dynamic>.from(orders);
+          sorted.sort((a, b) {
+            // Pending comes before Proses
+            if (a['status'] == 'Pending' && b['status'] == 'Proses') return -1;
+            if (a['status'] == 'Proses' && b['status'] == 'Pending') return 1;
+            // Within same status, oldest first
+            final aTime = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime.now();
+            final bTime = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime.now();
+            return aTime.compareTo(bTime);
+          });
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 380,
+              childAspectRatio: 0.7,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: sorted.length,
+            itemBuilder: (context, index) {
+              final order = sorted[index];
+              final status = order['status'] as String;
+              final table = order['table'];
+              final tableLabel = table != null && table['id'] != null
+                  ? 'Meja ${table['table_number']}'
+                  : 'Take Away';
+
+              return _KitchenOrderCard(
+                order: order,
+                status: status,
+                tableLabel: tableLabel,
+                statusColor: _statusColor(status),
+                onUpdateStatus: (newStatus) => _updateStatus(ref, context, order['id'], newStatus),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _updateStatus(WidgetRef ref, BuildContext context, int id, String status) async {
+    try {
+      final dio = ref.read(dioProvider);
+      await dio.put('orders/$id/status', data: {'status': status});
+      // Provider auto-refreshes via stream
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+}
+
+// ─── Kitchen Order Card ───────────────────────────────────────────────────────
+class _KitchenOrderCard extends StatelessWidget {
+  final Map<String, dynamic> order;
+  final String status;
+  final String tableLabel;
+  final Color statusColor;
+  final Function(String) onUpdateStatus;
+
+  const _KitchenOrderCard({
+    required this.order,
+    required this.status,
+    required this.tableLabel,
+    required this.statusColor,
+    required this.onUpdateStatus,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = order['items'] as List? ?? [];
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      child: Card(
+        color: const Color(0xFF161B22),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: statusColor, width: status == 'Pending' ? 2.5 : 2),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '#${order['id']}',
+                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: statusColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (status == 'Pending')
+                          const _PulsingDot(color: Colors.orange, size: 8),
+                        if (status == 'Pending') const SizedBox(width: 4),
+                        Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.table_restaurant, color: Colors.white54, size: 16),
+                  const SizedBox(width: 4),
+                  Text(tableLabel, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.person_outline, color: Colors.white54, size: 16),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      order['customer_name'] ?? 'Umum',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              // Time elapsed
+              _TimeElapsed(createdAt: order['created_at']),
+              const Divider(color: Colors.white24, height: 16),
+              // Items
+              Expanded(
+                child: ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (_, i) {
+                    final item = items[i];
+                    final itemNote = item['notes'];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${item['quantity']}x',
+                                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item['menu']?['name'] ?? 'Menu',
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Item-level note
+                          if (itemNote != null && itemNote.toString().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 38, top: 2),
+                              child: Text(
+                                '📝 $itemNote',
+                                style: TextStyle(color: Colors.yellow.shade200, fontSize: 11, fontStyle: FontStyle.italic),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Global notes
+              if (order['notes'] != null && order['notes'].toString().isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.yellow.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.yellow.shade700),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.note_alt_outlined, size: 14, color: Colors.yellow),
+                      const SizedBox(width: 4),
+                      Expanded(child: Text(order['notes'], style: const TextStyle(color: Colors.yellow, fontSize: 12))),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 10),
+              // Action buttons
+              SizedBox(
+                width: double.infinity,
+                child: status == 'Pending'
+                    ? FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => onUpdateStatus('Proses'),
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('Mulai Proses', style: TextStyle(fontWeight: FontWeight.bold)),
+                      )
+                    : FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => onUpdateStatus('Selesai'),
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Selesai', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Counter Badge ────────────────────────────────────────────────────────────
+class _CounterBadge extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+
+  const _CounterBadge({required this.label, required this.count, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$count', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(color: color.withOpacity(0.8), fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Pulsing Dot ──────────────────────────────────────────────────────────────
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  final double size;
+  const _PulsingDot({this.color = Colors.green, this.size = 12});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.color.withOpacity(0.4 + _ctrl.value * 0.6),
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withOpacity(0.3 * _ctrl.value),
+              blurRadius: 8 * _ctrl.value,
+              spreadRadius: 2 * _ctrl.value,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Time Elapsed Widget ──────────────────────────────────────────────────────
+class _TimeElapsed extends StatefulWidget {
+  final String? createdAt;
+  const _TimeElapsed({this.createdAt});
+
+  @override
+  State<_TimeElapsed> createState() => _TimeElapsedState();
+}
+
+class _TimeElapsedState extends State<_TimeElapsed> {
+  late Timer _timer;
+  Duration _elapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _calcElapsed();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _calcElapsed());
+  }
+
+  void _calcElapsed() {
+    if (widget.createdAt != null) {
+      final created = DateTime.tryParse(widget.createdAt!);
+      if (created != null && mounted) {
+        setState(() => _elapsed = DateTime.now().difference(created));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mins = _elapsed.inMinutes;
+    final secs = _elapsed.inSeconds % 60;
+    final color = mins >= 15 ? Colors.red : mins >= 5 ? Colors.orange : Colors.green;
+    final label = mins >= 15 ? '⚠️ TERLALU LAMA' : mins >= 5 ? '⏰ Segera' : '✓ Normal';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_outlined, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '${mins}m ${secs}s',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: color.withOpacity(0.7), fontSize: 10)),
+        ],
+      ),
+    );
+  }
+}

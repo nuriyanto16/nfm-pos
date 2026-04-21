@@ -1,0 +1,168 @@
+package handlers
+
+import (
+	"net/http"
+	"os"
+
+	"pos-resto/backend/database"
+	"pos-resto/backend/internal/middleware"
+	"pos-resto/backend/internal/models"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+func GetMenus(c *gin.Context) {
+	var menus []models.Menu
+	db := database.DB.Model(&models.Menu{}).Scopes(middleware.GetQueryScope(c)).Preload("Category")
+
+	if cat := c.Query("category_id"); cat != "" {
+		db = db.Where("category_id = ?", cat)
+	}
+	if available := c.Query("available"); available == "true" {
+		db = db.Where("is_available = true")
+	}
+
+	pagination, err := Paginate(c, db, &menus)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch menus"})
+		return
+	}
+
+	c.JSON(http.StatusOK, pagination)
+}
+
+func GetMenuByID(c *gin.Context) {
+	id := c.Param("id")
+	var menu models.Menu
+	if err := database.DB.Preload("Category").First(&menu, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Menu not found"})
+		return
+	}
+	c.JSON(http.StatusOK, menu)
+}
+
+func CreateMenu(c *gin.Context) {
+	var menu models.Menu
+	if err := c.ShouldBindJSON(&menu); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := database.DB.Create(&menu).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create menu"})
+		return
+	}
+	database.DB.Preload("Category").First(&menu, menu.ID)
+	c.JSON(http.StatusCreated, menu)
+}
+
+func UpdateMenu(c *gin.Context) {
+	id := c.Param("id")
+	var menu models.Menu
+	if err := database.DB.First(&menu, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Menu not found"})
+		return
+	}
+	var req models.Menu
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.ID = menu.ID
+	req.CreatedAt = menu.CreatedAt
+	if err := database.DB.Save(&req).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update menu"})
+		return
+	}
+	database.DB.Preload("Category").First(&req, req.ID)
+	c.JSON(http.StatusOK, req)
+}
+
+func DeleteMenu(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.Menu{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete menu"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Menu deleted successfully"})
+}
+
+// ─── Category ─────────────────────────────────────────────────────────────────
+
+func GetCategories(c *gin.Context) {
+	var categories []models.Category
+	db := database.DB.Model(&models.Category{}).Scopes(middleware.GetQueryScope(c))
+
+	pagination, err := Paginate(c, db, &categories)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, pagination)
+}
+
+func CreateCategory(c *gin.Context) {
+	var cat models.Category
+	if err := c.ShouldBindJSON(&cat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := database.DB.Create(&cat).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category"})
+		return
+	}
+	c.JSON(http.StatusCreated, cat)
+}
+
+func UpdateCategory(c *gin.Context) {
+	id := c.Param("id")
+	var cat models.Category
+	if err := database.DB.First(&cat, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		return
+	}
+	var req models.Category
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.ID = cat.ID
+	if err := database.DB.Save(&req).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category"})
+		return
+	}
+	c.JSON(http.StatusOK, req)
+}
+
+func DeleteCategory(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.Category{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
+}
+
+func UploadMenuImage(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No image uploaded"})
+		return
+	}
+
+	// Create uploads directory if not exists
+	if _, err := os.Stat("uploads"); os.IsNotExist(err) {
+		os.Mkdir("uploads", 0755)
+	}
+
+	filename := uuid.New().String() + "_" + file.Filename
+	filepath := "uploads/" + filename
+
+	if err := c.SaveUploadedFile(file, filepath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"url": "/uploads/" + filename})
+}
