@@ -245,16 +245,12 @@ func ProcessPayment(c *gin.Context) {
 		return
 	}
 
-	// Only mark as Selesai if order was already completed by kitchen
-	if order.Status == "Selesai" {
-		// Already Selesai, payment is just recording the payment
-	} else if order.Status == "Proses" || order.Status == "Pending" {
-		// Mark order as Selesai upon payment (it's been served or ready)
-		if err := tx.Model(&order).Update("status", "Selesai").Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
-			return
-		}
+	// Update order status and paid flag
+	updateData := map[string]interface{}{"is_paid": true, "status": "Selesai"}
+	if err := tx.Model(&order).Updates(updateData).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
+		return
 	}
 	
 	if order.TableID != nil {

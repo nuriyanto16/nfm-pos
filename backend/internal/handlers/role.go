@@ -11,7 +11,7 @@ import (
 
 func GetRoles(c *gin.Context) {
 	var roles []models.Role
-	if err := database.DB.Find(&roles).Error; err != nil {
+	if err := database.DB.Preload("Menus").Find(&roles).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch roles"})
 		return
 	}
@@ -19,15 +19,32 @@ func GetRoles(c *gin.Context) {
 }
 
 func CreateRole(c *gin.Context) {
-	var role models.Role
-	if err := c.ShouldBindJSON(&role); err != nil {
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		MenuIDs     []uint `json:"menu_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	role := models.Role{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
 	if err := database.DB.Create(&role).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create role"})
 		return
 	}
+
+	if len(req.MenuIDs) > 0 {
+		var menus []models.SidebarMenu
+		database.DB.Find(&menus, req.MenuIDs)
+		database.DB.Model(&role).Association("Menus").Replace(menus)
+	}
+
 	c.JSON(http.StatusCreated, role)
 }
 
@@ -42,6 +59,7 @@ func UpdateRole(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		MenuIDs     []uint `json:"menu_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -61,6 +79,14 @@ func UpdateRole(c *gin.Context) {
 		return
 	}
 
+	if req.MenuIDs != nil {
+		var menus []models.SidebarMenu
+		database.DB.Find(&menus, req.MenuIDs)
+		database.DB.Model(&role).Association("Menus").Replace(menus)
+	}
+
+	// Fetch again with menus preloaded to return to frontend
+	database.DB.Preload("Menus").First(&role, role.ID)
 	c.JSON(http.StatusOK, role)
 }
 

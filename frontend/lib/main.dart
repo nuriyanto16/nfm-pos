@@ -27,8 +27,10 @@ import 'features/ingredient/presentation/ingredient_management_screen.dart';
 import 'features/ingredient/presentation/stock_management_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/wa_log/presentation/wa_log_screen.dart';
+import 'features/management/presentation/sidebar_management_screen.dart';
 import 'shared/widgets/sidebar_layout.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/theme/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,6 +110,10 @@ final _router = GoRouter(
           builder: (context, state) => const RoleManagementScreen(),
         ),
         GoRoute(
+          path: '/management/sidebar',
+          builder: (context, state) => const SidebarManagementScreen(),
+        ),
+        GoRoute(
           path: '/suppliers',
           builder: (context, state) => const SupplierManagementScreen(),
         ),
@@ -160,17 +166,19 @@ final _router = GoRouter(
   ],
 );
 
-class PosApp extends StatelessWidget {
+class PosApp extends ConsumerWidget {
   const PosApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeSettings = ref.watch(themeProvider);
+
     return MaterialApp.router(
-      title: 'POS Resto Modern',
+      title: 'NFM POS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFE65100), // Deep orange
+          seedColor: themeSettings.seedColor,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -178,13 +186,13 @@ class PosApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFE65100),
+          seedColor: themeSettings.seedColor,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      themeMode: ThemeMode.system,
+      themeMode: themeSettings.themeMode,
       routerConfig: _router,
     );
   }

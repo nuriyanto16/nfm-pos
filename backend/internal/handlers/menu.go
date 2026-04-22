@@ -10,6 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"image"
+	"image/jpeg"
+	_ "image/png" // Register PNG decoder
 )
 
 func GetMenus(c *gin.Context) {
@@ -145,24 +148,60 @@ func DeleteCategory(c *gin.Context) {
 }
 
 func UploadMenuImage(c *gin.Context) {
+	handleImageUpload(c, "uploads")
+}
+
+func UploadLogo(c *gin.Context) {
+	handleImageUpload(c, "uploads/logo")
+}
+
+func handleImageUpload(c *gin.Context, folder string) {
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No image uploaded"})
 		return
 	}
 
-	// Create uploads directory if not exists
-	if _, err := os.Stat("uploads"); os.IsNotExist(err) {
-		os.Mkdir("uploads", 0755)
+	// Create directory if not exists
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		os.MkdirAll(folder, 0755)
 	}
 
-	filename := uuid.New().String() + "_" + file.Filename
-	filepath := "uploads/" + filename
+	filename := uuid.New().String() + ".jpg" // Force JPEG for better compression
+	filepath := folder + "/" + filename
 
-	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+	// Open the uploaded file
+	src, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open image"})
 		return
 	}
+	defer src.Close()
 
-	c.JSON(http.StatusOK, gin.H{"url": "/uploads/" + filename})
+	// Decode the image
+	img, _, err := image.Decode(src)
+	if err != nil {
+		// Fallback to direct save if decoding fails (maybe not an image)
+		if err := c.SaveUploadedFile(file, filepath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+			return
+		}
+	} else {
+		// Create the destination file
+		out, err := os.Create(filepath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create destination file"})
+			return
+		}
+		defer out.Close()
+
+		// Save with JPEG compression (quality 60-70 is usually good enough for web)
+		err = jpeg.Encode(out, img, &jpeg.Options{Quality: 70})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to compress image"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"url": "/" + folder + "/" + filename})
 }

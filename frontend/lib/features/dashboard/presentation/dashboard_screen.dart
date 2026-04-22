@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../shared/widgets/skeleton.dart';
 
 final dashboardStatsProvider = FutureProvider((ref) async {
   final dio = ref.read(dioProvider);
@@ -173,8 +174,79 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _DashboardSkeleton(),
         error: (err, stack) => Center(child: Text('Error: $err')),
+      ),
+    );
+  }
+}
+
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Skeleton(width: 250, height: 28),
+                  SizedBox(height: 8),
+                  Skeleton(width: 180, height: 16),
+                ],
+              ),
+              Skeleton(width: 100, height: 40, borderRadius: 20),
+            ],
+          ),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 700 ? 2 : 1);
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 2.2,
+                children: List.generate(4, (_) => const Skeleton(borderRadius: 24)),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    Skeleton(width: double.infinity, height: 320, borderRadius: 24),
+                    SizedBox(height: 24),
+                    Skeleton(width: double.infinity, height: 300, borderRadius: 24),
+                  ],
+                ),
+              ),
+              SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  children: [
+                    Skeleton(width: double.infinity, height: 350, borderRadius: 24),
+                    SizedBox(height: 24),
+                    Skeleton(width: double.infinity, height: 250, borderRadius: 24),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

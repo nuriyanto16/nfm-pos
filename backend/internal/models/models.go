@@ -7,9 +7,21 @@ import (
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 type Role struct {
-	ID          uint   `gorm:"primaryKey" json:"id"`
-	Name        string `gorm:"unique;not null;type:varchar(50)" json:"name"`
-	Description string `json:"description"`
+	ID          uint          `gorm:"primaryKey" json:"id"`
+	Name        string        `gorm:"unique;not null;type:varchar(50)" json:"name"`
+	Description string        `json:"description"`
+	Menus       []SidebarMenu `gorm:"many2many:role_menus;" json:"menus,omitempty"`
+}
+
+type SidebarMenu struct {
+	ID        uint          `gorm:"primaryKey" json:"id"`
+	ParentID  *uint         `json:"parent_id"`
+	Title     string        `gorm:"not null" json:"title"`
+	Path      string        `json:"path"`
+	Icon      string        `json:"icon"`
+	SortOrder int           `gorm:"default:0" json:"sort_order"`
+	IsHeader  bool          `gorm:"default:false" json:"is_header"`
+	Children  []SidebarMenu `gorm:"foreignKey:ParentID" json:"children,omitempty"`
 }
 
 type Branch struct {
@@ -165,6 +177,7 @@ type Order struct {
 	DiscountAmount float64     `gorm:"default:0" json:"discount_amount"`
 	ShippingFee    float64     `gorm:"default:0" json:"shipping_fee"`
 	Notes          string      `json:"notes"`
+	IsPaid         bool        `gorm:"default:false" json:"is_paid"`
 	CreatedAt      time.Time   `json:"created_at"`
 	Items          []OrderItem `gorm:"foreignKey:OrderID" json:"items"`
 	ServiceChargeAmount float64 `gorm:"default:0" json:"service_charge_amount"`

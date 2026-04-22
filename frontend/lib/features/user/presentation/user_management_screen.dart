@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
+import '../../management/presentation/sidebar_management_screen.dart';
+import '../../../shared/widgets/sidebar_layout.dart';
 
-// ─── Providers ───────────────────────────────────────────────────────────────
+import '../../../shared/widgets/skeleton.dart';
+
+// ...
 final roleListProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
   final response = await dio.get('roles');
@@ -24,6 +28,15 @@ final userListProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
 final branchListProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
   final response = await dio.get('branches', queryParameters: {'limit': 100});
+  if (response.data is Map && response.data.containsKey('rows')) {
+    return response.data['rows'] as List<dynamic>;
+  }
+  return response.data as List<dynamic>;
+});
+
+final sidebarListProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final dio = ref.read(dioProvider);
+  final response = await dio.get('management/sidebar');
   if (response.data is Map && response.data.containsKey('rows')) {
     return response.data['rows'] as List<dynamic>;
   }
@@ -52,7 +65,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
         label: const Text('Tambah User'),
       ),
       body: usersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(16),
+          child: ListSkeleton(itemCount: 10),
+        ),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (users) => LayoutBuilder(
           builder: (context, constraints) {
@@ -430,40 +446,93 @@ class _RoleManagementScreenState extends ConsumerState<RoleManagementScreen> {
   void _showRoleForm(BuildContext context, Map<String, dynamic>? role) {
     final nameCtrl = TextEditingController(text: role?['name'] ?? '');
     final descCtrl = TextEditingController(text: role?['description'] ?? '');
+    List<int> selectedMenuIds = (role?['menus'] as List? ?? []).map((m) => m['id'] as int).toList();
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(role == null ? 'Tambah Role' : 'Edit Role'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nama Role *', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Deskripsi', border: OutlineInputBorder()), maxLines: 2),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(role == null ? 'Tambah Role' : 'Edit Role & Privilege'),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nama Role *', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Deskripsi', border: OutlineInputBorder()), maxLines: 2),
+                  const SizedBox(height: 20),
+                  const Text('Hak Akses Menu (Privilege):', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Divider(),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      return ref.watch(sidebarListProvider).when(
+                        loading: () => const ListSkeleton(itemCount: 6),
+                        error: (e, _) => Text('Error: $e'),
+                        data: (allMenus) {
+                          if (allMenus.isEmpty) return const Text('Tidak ada menu ditemukan');
+                          return Column(
+                            children: allMenus.map((menu) {
+                              final isHeader = menu['is_header'] == true;
+                              final id = (menu['id'] as num).toInt();
+                              
+                              return CheckboxListTile(
+                                dense: true,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                title: Text(menu['title'] ?? '', style: TextStyle(fontWeight: isHeader ? FontWeight.bold : null)),
+                                subtitle: isHeader ? null : Text(menu['path'] ?? '', style: const TextStyle(fontSize: 10)),
+                                value: selectedMenuIds.contains(id),
+                                onChanged: (val) {
+                                  setDialogState(() {
+                                    if (val == true) {
+                                      selectedMenuIds.add(id);
+                                    } else {
+                                      selectedMenuIds.remove(id);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            FilledButton(
+              onPressed: () async {
+                if (nameCtrl.text.isEmpty) return;
+                try {
+                  final dio = ref.read(dioProvider);
+                  final data = {
+                    'name': nameCtrl.text, 
+                    'description': descCtrl.text,
+                    'menu_ids': selectedMenuIds,
+                  };
+                  if (role != null) {
+                    await dio.put('roles/${role['id']}', data: data);
+                  } else {
+                    await dio.post('roles', data: data);
+                  }
+                  ref.invalidate(roleListProvider);
+                  // Also invalidate auth me to refresh menu cache if current user updated their own role
+                  ref.invalidate(authMeProvider);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+              child: const Text('Simpan'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          FilledButton(
-            onPressed: () async {
-              if (nameCtrl.text.isEmpty) return;
-              try {
-                final dio = ref.read(dioProvider);
-                final data = {'name': nameCtrl.text, 'description': descCtrl.text};
-                if (role != null) {
-                  await dio.put('roles/${role['id']}', data: data);
-                } else {
-                  await dio.post('roles', data: data);
-                }
-                ref.invalidate(roleListProvider);
-                if (ctx.mounted) Navigator.pop(ctx);
-              } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
       ),
     );
   }

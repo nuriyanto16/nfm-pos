@@ -3,15 +3,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/dio_client.dart';
+import '../../features/settings/presentation/providers/settings_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// ─── User Info Provider ───────────────────────────────────────────────────────
-final userInfoProvider = FutureProvider<Map<String, String>>((ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  return {
-    'username': prefs.getString('username') ?? 'User',
-    'role': prefs.getString('role') ?? '-',
-  };
+// ─── User Info & Menu Provider ─────────────────────────────────────────────────
+final authMeProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final dio = ref.read(dioProvider);
+  final response = await dio.get('auth/me');
+  return response.data['user'] as Map<String, dynamic>;
 });
+
+IconData _getIconData(String? name) {
+  switch (name) {
+    case 'dashboard': return Icons.dashboard;
+    case 'shopping_cart': return Icons.shopping_cart;
+    case 'kitchen': return Icons.kitchen;
+    case 'receipt_long': return Icons.receipt_long;
+    case 'book': return Icons.book;
+    case 'restaurant_menu': return Icons.restaurant_menu;
+    case 'category': return Icons.category;
+    case 'table_restaurant': return Icons.table_restaurant;
+    case 'settings': return Icons.settings;
+    case 'people': return Icons.people;
+    case 'inventory_2': return Icons.inventory_2;
+    case 'local_offer': return Icons.local_offer;
+    case 'business': return Icons.business;
+    case 'local_shipping': return Icons.local_shipping;
+    case 'description': return Icons.description;
+    case 'account_tree': return Icons.account_tree;
+    case 'history_edu': return Icons.history_edu;
+    default: return Icons.circle;
+  }
+}
 
 
 // ─── Cashier Session Provider ─────────────────────────────────────────────────
@@ -34,55 +57,36 @@ class SidebarLayout extends ConsumerStatefulWidget {
 }
 
 class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
-  static const _navItems = [
-    _NavItem('/dashboard', Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
-    _NavItem('/pos', Icons.point_of_sale_outlined, Icons.point_of_sale, 'POS Kasir'),
-    _NavItem('/kitchen', Icons.kitchen_outlined, Icons.kitchen, 'Dapur (KDS)'),
-    _NavItem('/reports', Icons.bar_chart_outlined, Icons.bar_chart, 'Laporan'),
-    _NavItem('/orders', Icons.receipt_long_outlined, Icons.receipt_long, 'Pesanan'),
-  ];
-
-  static const _mgmtItems = [
-    _NavItem('/menus', Icons.restaurant_menu_outlined, Icons.restaurant_menu, 'Menu'),
-    _NavItem('/ingredients', Icons.science_outlined, Icons.science, 'Bahan (Baku)'),
-    _NavItem('/stock', Icons.inventory_2_outlined, Icons.inventory_2, 'Manajemen Stok'),
-    _NavItem('/manage-tables', Icons.table_bar_outlined, Icons.table_bar, 'Meja'),
-    _NavItem('/customers', Icons.people_outline, Icons.people, 'Customer'),
-    _NavItem('/promos', Icons.local_offer_outlined, Icons.local_offer, 'Promo'),
-    _NavItem('/branches', Icons.business_outlined, Icons.business, 'Cabang'),
-    _NavItem('/users', Icons.manage_accounts_outlined, Icons.manage_accounts, 'User / Role'),
-    _NavItem('/suppliers', Icons.local_shipping_outlined, Icons.local_shipping, 'Supplier'),
-    
-    // Keuangan Split
-    _NavItem('/finance/coa', Icons.account_tree_outlined, Icons.account_tree, 'Chart of Account'),
-    _NavItem('/finance/journal', Icons.description_outlined, Icons.description, 'Jurnal Umum'),
-    _NavItem('/finance/ledger', Icons.menu_book_outlined, Icons.menu_book, 'Buku Besar'),
-    _NavItem('/wa-logs', Icons.history_edu_outlined, Icons.history_edu, 'Log WhatsApp'),
-    
-    _NavItem('/settings', Icons.settings_outlined, Icons.settings, 'Pengaturan'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final isWide = MediaQuery.of(context).size.width >= 900;
     final sessionAsync = ref.watch(cashierSessionProvider);
+    final authMeAsync = ref.watch(authMeProvider);
 
-    if (!isWide) {
-      return _buildMobileLayout(context, location, sessionAsync);
-    }
-    return _buildDesktopLayout(context, location, sessionAsync);
+    return authMeAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text('Error loading menus: $e'))),
+      data: (user) {
+        final menus = (user['role']?['menus'] as List? ?? []);
+        
+        if (!isWide) {
+          return _buildMobileLayout(context, location, sessionAsync, user, menus);
+        }
+        return _buildDesktopLayout(context, location, sessionAsync, user, menus);
+      },
+    );
   }
 
   Widget _buildDesktopLayout(
-      BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync) {
+      BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync, Map<String, dynamic> user, List<dynamic> menus) {
     return Scaffold(
       body: Row(
         children: [
           _DesktopSidebar(
             location: location,
-            navItems: _navItems,
-            mgmtItems: _mgmtItems,
+            user: user,
+            menus: menus,
             sessionAsync: sessionAsync,
             onLogout: _logout,
             onSessionAction: _handleSessionAction,
@@ -94,56 +98,26 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
   }
 
   Widget _buildMobileLayout(
-      BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync) {
-    // Find selected index for BottomNavigationBar
-    final allItems = [..._navItems, ..._mgmtItems];
-    final selectedIndex = allItems.indexWhere((item) => item.path == location);
-
+      BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync, Map<String, dynamic> user, List<dynamic> menus) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('POS Resto Modern'),
+        title: const Text('NFM POS'),
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        actions: [
-          sessionAsync.when(
-            data: (session) => session != null
-                ? IconButton(
-                    icon: const Icon(Icons.point_of_sale, color: Colors.green),
-                    tooltip: 'Sesi Aktif',
-                    onPressed: () => _handleSessionAction(context, session),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.point_of_sale),
-                    tooltip: 'Buka Sesi',
-                    onPressed: () => _handleSessionAction(context, null),
-                  ),
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
-        ],
       ),
       drawer: _MobileDrawer(
         location: location,
-        navItems: _navItems,
-        mgmtItems: _mgmtItems,
+        user: user,
+        menus: menus,
         sessionAsync: sessionAsync,
         onLogout: _logout,
         onSessionAction: _handleSessionAction,
       ),
       body: widget.child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex >= 0 ? selectedIndex % _navItems.length : 0,
-        onDestinationSelected: (i) => context.go(_navItems[i].path),
-        destinations: _navItems.map((item) => NavigationDestination(
-          icon: Icon(item.icon),
-          selectedIcon: Icon(item.selectedIcon),
-          label: item.label,
-        )).toList(),
-      ),
     );
   }
 
@@ -334,16 +308,16 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
 class _DesktopSidebar extends ConsumerWidget {
   final String location;
-  final List<_NavItem> navItems;
-  final List<_NavItem> mgmtItems;
+  final Map<String, dynamic> user;
+  final List<dynamic> menus;
   final AsyncValue<Map<String, dynamic>?> sessionAsync;
   final Function(BuildContext) onLogout;
   final Function(BuildContext, Map<String, dynamic>?) onSessionAction;
 
   const _DesktopSidebar({
     required this.location,
-    required this.navItems,
-    required this.mgmtItems,
+    required this.user,
+    required this.menus,
     required this.sessionAsync,
     required this.onLogout,
     required this.onSessionAction,
@@ -359,66 +333,93 @@ class _DesktopSidebar extends ConsumerWidget {
       child: Column(
         children: [
           // Logo header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 32, 16, 20),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.restaurant_menu, color: colorScheme.primary, size: 32),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('POS Resto', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colorScheme.primary)),
-                      Text('Modern v2.0', style: TextStyle(fontSize: 11, color: colorScheme.primary.withOpacity(0.7))),
-                    ],
+          ref.watch(settingsProvider).when(
+            data: (settings) {
+              final logoUrl = settings['logo_url'];
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 40, 16, 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [colorScheme.primary, colorScheme.primary.withRed(200)],
                   ),
                 ),
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (logoUrl != null && logoUrl.toString().isNotEmpty)
+                      Container(
+                        width: 60,
+                        height: 60,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+                          image: DecorationImage(
+                            image: NetworkImage('${dotenv.get('BASE_URL').split('/api')[0]}$logoUrl'),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                        child: const Icon(Icons.restaurant, color: Colors.white, size: 32),
+                      ),
+                    const Text(
+                      'NFM POS',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white, letterSpacing: 0.5),
+                    ),
+                    Text(
+                      'Smart Restaurant Solution',
+                      style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              );
+            },
+            loading: () => Container(height: 140, color: colorScheme.primary),
+            error: (_, __) => Container(height: 140, color: colorScheme.primary, child: const Center(child: Text('NFM POS', style: TextStyle(color: Colors.white)))),
           ),
 
           // ─── Profile Section ──────────────────────────────────────
-          ref.watch(userInfoProvider).when(
-            data: (info) => InkWell(
-              onTap: () => context.go('/profile'),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHigh,
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: colorScheme.primary,
-                      child: Text(
-                        (info['username'] ?? 'U').substring(0, 1).toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+          InkWell(
+            onTap: () => context.go('/profile'),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHigh,
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: colorScheme.primary,
+                    child: Text(
+                      (user['username'] ?? 'U').substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(info['username'] ?? 'User', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          Text(info['role'] ?? '-', style: TextStyle(fontSize: 11, color: colorScheme.outline)),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(user['username'] ?? 'User', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text(user['role']?['name'] ?? '-', style: TextStyle(fontSize: 11, color: colorScheme.outline)),
+                      ],
                     ),
-                    Icon(Icons.chevron_right, size: 18, color: colorScheme.outline),
-                  ],
-                ),
+                  ),
+                  Icon(Icons.chevron_right, size: 18, color: colorScheme.outline),
+                ],
               ),
             ),
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
           ),
 
           // Session status band
@@ -458,26 +459,24 @@ class _DesktopSidebar extends ConsumerWidget {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                // Main nav
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Text('MENU UTAMA',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.outline, letterSpacing: 1)),
-                ),
-                ...navItems.map((item) => _SidebarItem(item: item, location: location)),
-
-                const SizedBox(height: 8),
-                const Divider(indent: 16, endIndent: 16),
-
-                // Management nav
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Text('MANAJEMEN',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.outline, letterSpacing: 1)),
-                ),
-                ...mgmtItems.map((item) => _SidebarItem(item: item, location: location)),
-              ],
+              children: menus.map((menu) {
+                if (menu['is_header'] == true) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                    child: Text(
+                      menu['title']?.toUpperCase() ?? '',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.outline, letterSpacing: 1),
+                    ),
+                  );
+                }
+                final iconData = _getIconData(menu['icon']);
+                return _SidebarItem(
+                  title: menu['title'] ?? '',
+                  path: menu['path'] ?? '',
+                  icon: iconData,
+                  location: location,
+                );
+              }).toList(),
             ),
           ),
 
@@ -497,16 +496,16 @@ class _DesktopSidebar extends ConsumerWidget {
 // ─── Mobile Drawer ────────────────────────────────────────────────────────────
 class _MobileDrawer extends ConsumerWidget {
   final String location;
-  final List<_NavItem> navItems;
-  final List<_NavItem> mgmtItems;
+  final Map<String, dynamic> user;
+  final List<dynamic> menus;
   final AsyncValue<Map<String, dynamic>?> sessionAsync;
   final Function(BuildContext) onLogout;
   final Function(BuildContext, Map<String, dynamic>?) onSessionAction;
 
   const _MobileDrawer({
     required this.location,
-    required this.navItems,
-    required this.mgmtItems,
+    required this.user,
+    required this.menus,
     required this.sessionAsync,
     required this.onLogout,
     required this.onSessionAction,
@@ -514,39 +513,62 @@ class _MobileDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DrawerHeader(
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Icon(Icons.restaurant_menu, color: Theme.of(context).colorScheme.primary, size: 36),
-                const SizedBox(height: 8),
-                Text('POS Resto Modern', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.primary)),
-              ],
-            ),
+          ref.watch(settingsProvider).when(
+            data: (settings) {
+              final logoUrl = settings['logo_url'];
+              return DrawerHeader(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.primaryContainer],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (logoUrl != null && logoUrl.toString().isNotEmpty)
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage('${dotenv.get('BASE_URL').split('/api')[0]}$logoUrl'),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.restaurant, color: Colors.white, size: 36),
+                    const SizedBox(height: 8),
+                    const Text('NFM POS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
+                  ],
+                ),
+              );
+            },
+            loading: () => DrawerHeader(child: Container()),
+            error: (_, __) => const DrawerHeader(child: Text('NFM POS')),
           ),
-          ...navItems.map((item) => ListTile(
-            leading: Icon(item.icon),
-            title: Text(item.label),
-            selected: location == item.path,
-            onTap: () { Navigator.pop(context); context.go(item.path); },
-          )),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Text('MANAJEMEN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-          ),
-          ...mgmtItems.map((item) => ListTile(
-            leading: Icon(item.icon),
-            title: Text(item.label),
-            selected: location == item.path,
-            onTap: () { Navigator.pop(context); context.go(item.path); },
-          )),
+          ...menus.map((menu) {
+            if (menu['is_header'] == true) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(menu['title'] ?? '', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              );
+            }
+            return ListTile(
+              leading: Icon(_getIconData(menu['icon'])),
+              title: Text(menu['title'] ?? ''),
+              selected: location == menu['path'],
+              onTap: () { Navigator.pop(context); context.go(menu['path']); },
+            );
+          }),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -561,14 +583,21 @@ class _MobileDrawer extends ConsumerWidget {
 
 // ─── Sidebar Item ─────────────────────────────────────────────────────────────
 class _SidebarItem extends StatelessWidget {
-  final _NavItem item;
+  final String title;
+  final String path;
+  final IconData icon;
   final String location;
 
-  const _SidebarItem({required this.item, required this.location});
+  const _SidebarItem({
+    required this.title,
+    required this.path,
+    required this.icon,
+    required this.location,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = location == item.path;
+    final isSelected = location == path;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -576,12 +605,12 @@ class _SidebarItem extends StatelessWidget {
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         leading: Icon(
-          isSelected ? item.selectedIcon : item.icon,
+          icon,
           color: isSelected ? colorScheme.primary : colorScheme.onSurface,
           size: 22,
         ),
         title: Text(
-          item.label,
+          title,
           style: TextStyle(
             fontSize: 14,
             color: isSelected ? colorScheme.primary : null,
@@ -590,7 +619,7 @@ class _SidebarItem extends StatelessWidget {
         ),
         selected: isSelected,
         selectedTileColor: colorScheme.primaryContainer,
-        onTap: () => context.go(item.path),
+        onTap: () => context.go(path),
         visualDensity: VisualDensity.compact,
       ),
     );

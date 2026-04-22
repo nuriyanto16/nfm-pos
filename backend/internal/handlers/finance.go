@@ -84,18 +84,19 @@ func GetJournal(c *gin.Context) {
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 
-	db := database.DB.Where("branch_id = ?", branchID).Preload("Items.Account")
+	db := database.DB.Model(&models.JournalEntry{}).Where("branch_id = ?", branchID).Preload("Items.Account")
 
 	if startDate != "" && endDate != "" {
 		db = db.Where("date BETWEEN ? AND ?", startDate, endDate)
 	}
 
-	if err := db.Order("date desc, created_at desc").Find(&entries).Error; err != nil {
+	pagination, err := Paginate(c, db.Order("date desc, created_at desc"), &entries)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch journal entries"})
 		return
 	}
 
-	c.JSON(http.StatusOK, entries)
+	c.JSON(http.StatusOK, pagination)
 }
 
 type GeneralLedgerRow struct {

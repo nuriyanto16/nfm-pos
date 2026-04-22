@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type LoginRequest struct {
@@ -89,5 +90,24 @@ func Login(c *gin.Context) {
 			"username": user.Username,
 			"role":     user.Role.Name,
 		},
+	})
+}
+func GetMe(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Preload("Role.Menus", func(db *gorm.DB) *gorm.DB {
+		return db.Order("sort_order ASC")
+	}).First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": user,
 	})
 }

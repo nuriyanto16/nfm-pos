@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
+func CheckDB() {
 	godotenv.Load()
 	database.ConnectDB()
 

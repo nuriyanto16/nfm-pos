@@ -142,6 +142,14 @@ func main() {
 	// ─── Settings ─────────────────────────────────────────────────────────────
 	protected.GET("/settings", handlers.GetSettings)
 	protected.POST("/settings", handlers.UpdateSettings)
+	protected.POST("/settings/logo", handlers.UploadLogo)
+
+	// ─── Sidebar & Auth ───────────────────────────────────────────────────────
+	protected.GET("/auth/me", handlers.GetMe)
+	protected.GET("/management/sidebar", handlers.GetSidebarMenus)
+	protected.POST("/management/sidebar", handlers.CreateSidebarMenu)
+	protected.PUT("/management/sidebar/:id", handlers.UpdateSidebarMenu)
+	protected.DELETE("/management/sidebar/:id", handlers.DeleteSidebarMenu)
 
 	// ─── Finance ──────────────────────────────────────────────────────────────
 	protected.GET("/finance/coa", handlers.GetCOA)

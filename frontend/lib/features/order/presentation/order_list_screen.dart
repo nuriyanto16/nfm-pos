@@ -3,45 +3,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../shared/widgets/skeleton.dart';
 
 // ─── Status filter ─────────────────────────────────────────────────────────────
 final orderStatusFilter = StateProvider<String>((ref) => 'Semua');
 final orderSearchQuery = StateProvider<String>((ref) => '');
+final orderPageProvider = StateProvider<int>((ref) => 1);
 
-final filteredOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+final ordersPaginationProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
   final status = ref.watch(orderStatusFilter);
+  final page = ref.watch(orderPageProvider);
+  final query = ref.watch(orderSearchQuery);
 
-  final params = <String, dynamic>{'limit': 100};
+  final params = <String, dynamic>{
+    'page': page,
+    'limit': 10,
+    'search': query,
+  };
+  
   if (status != 'Semua') {
     params['status'] = status;
   }
 
   final response = await dio.get('orders', queryParameters: params);
-  List<dynamic> rows = [];
-  if (response.data is Map && response.data.containsKey('rows')) {
-    rows = response.data['rows'] as List<dynamic>;
-  } else {
-    rows = response.data as List<dynamic>;
-  }
-
-  // Apply client-side search
-  final query = ref.watch(orderSearchQuery).toLowerCase();
-  if (query.isNotEmpty) {
-    rows = rows.where((o) {
-      final id = o['id'].toString();
-      final name = (o['customer_name'] ?? '').toString().toLowerCase();
-      return id.contains(query) || name.contains(query);
-    }).toList();
-  }
-
-  return rows;
+  return response.data as Map<String, dynamic>;
 });
 
 class OrderListScreen extends ConsumerWidget {
   const OrderListScreen({super.key});
 
-  static const _statusTabs = ['Semua', 'Pending', 'Proses', 'Selesai', 'Batal'];
+  static const _statusTabs = ['Semua', 'Pending', 'Proses', 'Siap', 'Selesai', 'Batal'];
 
   Color _statusColor(String status) {
     switch (status) {
@@ -49,8 +41,10 @@ class OrderListScreen extends ConsumerWidget {
         return Colors.orange;
       case 'Proses':
         return Colors.blue;
-      case 'Selesai':
+      case 'Siap':
         return Colors.green;
+      case 'Selesai':
+        return Colors.teal;
       case 'Batal':
         return Colors.red;
       default:
@@ -64,6 +58,8 @@ class OrderListScreen extends ConsumerWidget {
         return Icons.hourglass_top;
       case 'Proses':
         return Icons.restaurant;
+      case 'Siap':
+        return Icons.delivery_dining;
       case 'Selesai':
         return Icons.check_circle;
       case 'Batal':
@@ -75,7 +71,6 @@ class OrderListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ordersAsync = ref.watch(filteredOrdersProvider);
     final selectedStatus = ref.watch(orderStatusFilter);
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -85,7 +80,7 @@ class OrderListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(filteredOrdersProvider),
+            onPressed: () => ref.invalidate(ordersPaginationProvider),
           ),
         ],
       ),
@@ -143,154 +138,144 @@ class OrderListScreen extends ConsumerWidget {
 
           // ─── Order List ──────────────────────────────────────
           Expanded(
-            child: ordersAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+            child: ref.watch(ordersPaginationProvider).when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: ListSkeleton(itemCount: 8),
+              ),
               error: (e, _) => Center(child: Text('Error: $e')),
-              data: (orders) {
-                if (orders.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.receipt_long_outlined, size: 64, color: colorScheme.outline),
-                        const SizedBox(height: 16),
-                        const Text('Tidak ada pesanan ditemukan', style: TextStyle(fontSize: 18)),
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: () => context.go('/pos'),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Buat Pesanan Baru'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+              data: (data) {
+                final orders = (data['rows'] as List? ?? []);
+                final total = data['total_rows'] ?? 0;
+                final page = data['page'] ?? 1;
+                final totalPages = data['total_pages'] ?? 1;
+                return Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final order = orders[index];
+                          final status = order['status'] ?? '';
+                          // ... items rendering ...
+                          final table = order['table'];
+                          final tableLabel = table != null && table['id'] != null
+                              ? 'Meja ${table['table_number']}'
+                              : 'Take Away';
+                          final statusCol = _statusColor(status);
+                          final itemCount = (order['items'] as List?)?.length ?? 0;
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    final status = order['status'] ?? '';
-                    final table = order['table'];
-                    final tableLabel = table != null && table['id'] != null
-                        ? 'Meja ${table['table_number']}'
-                        : 'Take Away';
-                    final statusCol = _statusColor(status);
-                    final itemCount = (order['items'] as List?)?.length ?? 0;
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => context.push('/orders/${order['id']}'),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              // Status indicator
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: statusCol.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  _statusIcon(status),
-                                  color: statusCol,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              // Order info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => context.push('/orders/${order['id']}'),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          '#${order['id']}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: statusCol.withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(color: statusCol.withOpacity(0.5)),
-                                          ),
-                                          child: Text(
-                                            status,
-                                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusCol),
-                                          ),
-                                        ),
-                                      ],
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: statusCol.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(_statusIcon(status), color: statusCol, size: 24),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      order['customer_name'] ?? 'Pelanggan Umum',
-                                      style: const TextStyle(fontSize: 14),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text('#${order['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: statusCol.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(color: statusCol.withOpacity(0.5)),
+                                                ),
+                                                child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusCol)),
+                                              ),
+                                              if (order['is_paid'] == true) ...[
+                                                const SizedBox(width: 4),
+                                                const Icon(Icons.check_circle, size: 14, color: Colors.green),
+                                              ],
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(order['customer_name'] ?? 'Pelanggan Umum', style: const TextStyle(fontSize: 14)),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.table_restaurant, size: 13, color: colorScheme.outline),
+                                              const SizedBox(width: 4),
+                                              Text(tableLabel, style: TextStyle(fontSize: 12, color: colorScheme.outline)),
+                                              const SizedBox(width: 12),
+                                              Icon(Icons.access_time, size: 13, color: colorScheme.outline),
+                                              const SizedBox(width: 4),
+                                              Text(_formatTime(order['created_at']), style: TextStyle(fontSize: 12, color: colorScheme.outline)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
-                                        Icon(Icons.table_restaurant, size: 13, color: colorScheme.outline),
-                                        const SizedBox(width: 4),
-                                        Text(tableLabel, style: TextStyle(fontSize: 12, color: colorScheme.outline)),
-                                        const SizedBox(width: 12),
-                                        Icon(Icons.fastfood, size: 13, color: colorScheme.outline),
-                                        const SizedBox(width: 4),
-                                        Text('$itemCount item', style: TextStyle(fontSize: 12, color: colorScheme.outline)),
-                                        const SizedBox(width: 12),
-                                        Icon(Icons.access_time, size: 13, color: colorScheme.outline),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          _formatTime(order['created_at']),
-                                          style: TextStyle(fontSize: 12, color: colorScheme.outline),
-                                        ),
+                                        Text(formatRupiah((order['total_amount'] as num?)?.toDouble() ?? 0), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colorScheme.primary)),
+                                        const SizedBox(height: 8),
+                                        if (order['is_paid'] != true)
+                                          _SmallActionButton(
+                                            icon: Icons.payment,
+                                            label: 'Bayar',
+                                            color: Colors.green,
+                                            onTap: () => context.push('/payment?orderId=${order['id']}'),
+                                          )
+                                        else
+                                          const Text('LUNAS', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11)),
                                       ],
                                     ),
                                   ],
                                 ),
                               ),
-                              // Amount + arrow
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    formatRupiah((order['total_amount'] as num?)?.toDouble() ?? 0),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: colorScheme.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (status == 'Pending' || status == 'Proses')
-                                        _SmallActionButton(
-                                          icon: Icons.payment,
-                                          label: 'Bayar',
-                                          color: Colors.green,
-                                          onTap: () => context.push('/payment?orderId=${order['id']}'),
-                                        ),
-                                      const SizedBox(width: 4),
-                                      Icon(Icons.chevron_right, color: colorScheme.outline),
-                                    ],
-                                  ),
-                                ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // Pagination Controls
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Page $page of $totalPages ($total orders)', style: const TextStyle(fontSize: 12)),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.chevron_left),
+                                onPressed: page > 1 ? () => ref.read(orderPageProvider.notifier).state-- : null,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.chevron_right),
+                                onPressed: page < totalPages ? () => ref.read(orderPageProvider.notifier).state++ : null,
                               ),
                             ],
                           ),
-                        ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 );
               },
             ),

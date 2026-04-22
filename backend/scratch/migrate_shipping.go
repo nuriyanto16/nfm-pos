@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func main() {
+func MigrateShipping() {
 	godotenv.Load("../.env")
 	host := os.Getenv("DB_HOST")
 	user := os.Getenv("DB_USER")

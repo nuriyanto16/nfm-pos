@@ -8,14 +8,25 @@ final kitchenOrdersProvider = StreamProvider.autoDispose<List<dynamic>>((ref) as
   final dio = ref.read(dioProvider);
 
   Future<List<dynamic>> fetchOrders() async {
-    final res = await dio.get('orders', queryParameters: {'status': 'Pending,Proses', 'limit': 100});
+    // Only fetch orders from last 24 hours to avoid showing ancient unpaid orders
+    final res = await dio.get('orders', queryParameters: {
+      'status': 'Pending,Proses,Siap', 
+      'limit': 100,
+      'sort': 'created_at desc'
+    });
     List<dynamic> allRows = [];
     if (res.data is Map && res.data.containsKey('rows')) {
       allRows = res.data['rows'] as List<dynamic>;
     } else {
       allRows = res.data as List<dynamic>;
     }
-    return allRows.where((o) => o['status'] == 'Pending' || o['status'] == 'Proses').toList();
+    
+    // Filter: Show Pending, Proses, and Siap (only if not paid)
+    return allRows.where((o) {
+      if (o['is_paid'] == true) return false;
+      final status = o['status'];
+      return status == 'Pending' || status == 'Proses' || status == 'Siap';
+    }).toList();
   }
 
   yield await fetchOrders();
@@ -34,7 +45,7 @@ class KitchenDisplayScreen extends ConsumerStatefulWidget {
 
 class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
   int _previousOrderCount = 0;
-  final Set<int> _newOrderIds = {};
+  final Set<int> _loadingIds = {};
 
   Color _statusColor(String status) {
     switch (status) {
@@ -42,6 +53,8 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
         return Colors.orange;
       case 'Proses':
         return Colors.blue;
+      case 'Siap':
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -141,9 +154,12 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
           // Sort: Pending first, then by oldest created_at
           final sorted = List<dynamic>.from(orders);
           sorted.sort((a, b) {
-            // Pending comes before Proses
-            if (a['status'] == 'Pending' && b['status'] == 'Proses') return -1;
-            if (a['status'] == 'Proses' && b['status'] == 'Pending') return 1;
+            // Sort by priority: Pending > Proses > Siap
+            final priority = {'Pending': 0, 'Proses': 1, 'Siap': 2};
+            final aPrio = priority[a['status']] ?? 99;
+            final bPrio = priority[b['status']] ?? 99;
+            if (aPrio != bPrio) return aPrio.compareTo(bPrio);
+            
             // Within same status, oldest first
             final aTime = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime.now();
             final bTime = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime.now();
@@ -172,6 +188,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                 status: status,
                 tableLabel: tableLabel,
                 statusColor: _statusColor(status),
+                isLoading: _loadingIds.contains(order['id']),
                 onUpdateStatus: (newStatus) => _updateStatus(ref, context, order['id'], newStatus),
               );
             },
@@ -182,6 +199,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
   }
 
   Future<void> _updateStatus(WidgetRef ref, BuildContext context, int id, String status) async {
+    setState(() => _loadingIds.add(id));
     try {
       final dio = ref.read(dioProvider);
       await dio.put('orders/$id/status', data: {'status': status});
@@ -190,6 +208,8 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _loadingIds.remove(id));
     }
   }
 }
@@ -200,6 +220,7 @@ class _KitchenOrderCard extends StatelessWidget {
   final String status;
   final String tableLabel;
   final Color statusColor;
+  final bool isLoading;
   final Function(String) onUpdateStatus;
 
   const _KitchenOrderCard({
@@ -207,6 +228,7 @@ class _KitchenOrderCard extends StatelessWidget {
     required this.status,
     required this.tableLabel,
     required this.statusColor,
+    required this.isLoading,
     required this.onUpdateStatus,
   });
 
@@ -350,25 +372,55 @@ class _KitchenOrderCard extends StatelessWidget {
               // Action buttons
               SizedBox(
                 width: double.infinity,
-                child: status == 'Pending'
-                    ? FilledButton.icon(
+                child: isLoading
+                    ? FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: Colors.white10,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        onPressed: () => onUpdateStatus('Proses'),
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Mulai Proses', style: TextStyle(fontWeight: FontWeight.bold)),
+                        onPressed: null,
+                        child: const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        ),
                       )
-                    : FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () => onUpdateStatus('Selesai'),
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('Selesai', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                    : status == 'Pending'
+                        ? FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: () => onUpdateStatus('Proses'),
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('Mulai Proses', style: TextStyle(fontWeight: FontWeight.bold)),
+                          )
+                        : status == 'Proses'
+                            ? FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                onPressed: () => onUpdateStatus('Siap'),
+                                icon: const Icon(Icons.check_circle),
+                                label: const Text('Sudah Dikirim ke Meja', style: TextStyle(fontWeight: FontWeight.bold)),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.green.withOpacity(0.5)),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.done_all, color: Colors.green, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('DIKIRIM (Menunggu Bayar)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
               ),
             ],
           ),

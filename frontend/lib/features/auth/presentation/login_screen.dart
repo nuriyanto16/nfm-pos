@@ -150,7 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'POS Resto Modern',
+                      'NFM POS',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: colorScheme.onSurface,
@@ -292,7 +292,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      '© 2026 RestoSavvy. All rights reserved.',
+                      '© 2026 NFM POS. All rights reserved.',
                       style: TextStyle(color: colorScheme.outline.withOpacity(0.5), fontSize: 11),
                     ),
                   ],

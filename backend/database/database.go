@@ -53,6 +53,7 @@ func ConnectDB() {
 		&models.JournalItem{},
 		&models.StockHistory{},
 		&models.WALog{},
+		&models.SidebarMenu{},
 	}
 
 	for _, model := range modelsToMigrate {
@@ -62,6 +63,60 @@ func ConnectDB() {
 	}
 
 	SeedAccounts()
+	SeedSidebarMenus()
+}
+
+func SeedSidebarMenus() {
+	var count int64
+	DB.Model(&models.SidebarMenu{}).Count(&count)
+	
+	// Always refresh seed if paths changed or table is empty
+	// For production, we would use a more sophisticated migration
+	DB.Exec("DELETE FROM role_menus") // Clear join table first
+	DB.Exec("DELETE FROM sidebar_menus")
+
+	// 1. Dashboard
+	dashboard := models.SidebarMenu{Title: "Dashboard", Path: "/dashboard", Icon: "dashboard", SortOrder: 1}
+	DB.Create(&dashboard)
+
+	// 2. Headings
+	operational := models.SidebarMenu{Title: "OPERASIONAL", IsHeader: true, SortOrder: 2}
+	DB.Create(&operational)
+
+	DB.Create(&models.SidebarMenu{Title: "Point of Sale", Path: "/pos", Icon: "shopping_cart", SortOrder: 3})
+	DB.Create(&models.SidebarMenu{Title: "Kitchen Display", Path: "/kitchen", Icon: "kitchen", SortOrder: 4})
+	DB.Create(&models.SidebarMenu{Title: "Daftar Pesanan", Path: "/orders", Icon: "receipt_long", SortOrder: 5})
+
+	finance := models.SidebarMenu{Title: "KEUANGAN", IsHeader: true, SortOrder: 10}
+	DB.Create(&finance)
+	DB.Create(&models.SidebarMenu{Title: "Jurnal Umum", Path: "/finance/journal", Icon: "book", SortOrder: 11})
+	DB.Create(&models.SidebarMenu{Title: "Buku Besar", Path: "/finance/ledger", Icon: "account_balance", SortOrder: 12})
+	DB.Create(&models.SidebarMenu{Title: "Chart of Accounts", Path: "/finance/coa", Icon: "list_alt", SortOrder: 13})
+
+	master := models.SidebarMenu{Title: "MASTER DATA", IsHeader: true, SortOrder: 20}
+	DB.Create(&master)
+	DB.Create(&models.SidebarMenu{Title: "Manajemen Menu", Path: "/menus", Icon: "restaurant_menu", SortOrder: 21})
+	DB.Create(&models.SidebarMenu{Title: "Kategori", Path: "/menus", Icon: "category", SortOrder: 22}) // Category screen is often part of menu management or separate
+	DB.Create(&models.SidebarMenu{Title: "Meja", Path: "/manage-tables", Icon: "table_restaurant", SortOrder: 23})
+	DB.Create(&models.SidebarMenu{Title: "Pelanggan", Path: "/customers", Icon: "person", SortOrder: 24})
+	DB.Create(&models.SidebarMenu{Title: "Stok & Bahan", Path: "/ingredients", Icon: "inventory_2", SortOrder: 25})
+
+	system := models.SidebarMenu{Title: "SISTEM", IsHeader: true, SortOrder: 40}
+	DB.Create(&system)
+	DB.Create(&models.SidebarMenu{Title: "Pengaturan", Path: "/settings", Icon: "settings", SortOrder: 41})
+	DB.Create(&models.SidebarMenu{Title: "User Management", Path: "/users", Icon: "people", SortOrder: 42})
+	DB.Create(&models.SidebarMenu{Title: "Role Privilege", Path: "/roles", Icon: "security", SortOrder: 43})
+	DB.Create(&models.SidebarMenu{Title: "Sidebar Management", Path: "/management/sidebar", Icon: "menu_open", SortOrder: 44})
+
+	// Assign all menus to Admin role
+	var allMenus []models.SidebarMenu
+	DB.Find(&allMenus)
+	var adminRole models.Role
+	if err := DB.Where("name = ?", "Admin").First(&adminRole).Error; err != nil {
+		adminRole = models.Role{Name: "Admin", Description: "Administrator with full access"}
+		DB.Create(&adminRole)
+	}
+	DB.Model(&adminRole).Association("Menus").Replace(allMenus)
 }
 
 func SeedAccounts() {
