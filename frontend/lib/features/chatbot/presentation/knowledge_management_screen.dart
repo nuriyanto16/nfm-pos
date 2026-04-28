@@ -28,9 +28,10 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     });
 
     try {
-      final chatbotUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       final dio = Dio();
-      final response = await dio.get('${chatbotUrl}knowledge');
+      final response = await dio.get('${chatbotUrl}api/knowledge');
       setState(() {
         _files = List<String>.from(response.data);
         _isLoading = false;
@@ -59,9 +60,10 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     if (confirm != true) return;
 
     try {
-      final chatbotUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       final dio = Dio();
-      await dio.delete('${chatbotUrl}knowledge/$filename');
+      await dio.delete('${chatbotUrl}api/knowledge/$filename');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File berhasil dihapus')));
       _fetchFiles();
     } catch (e) {
@@ -76,9 +78,10 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
 
     if (isEditing) {
       try {
-        final chatbotUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+        final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+        final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
         final dio = Dio();
-        final response = await dio.get('${chatbotUrl}knowledge/$filename');
+        final response = await dio.get('${chatbotUrl}api/knowledge/$filename');
         content = response.data['content'] ?? "";
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat isi file: $e')));
@@ -121,9 +124,10 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
           ElevatedButton(
             onPressed: () async {
               try {
-                final chatbotUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+                final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+                final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
                 final dio = Dio();
-                await dio.post('${chatbotUrl}knowledge', data: {
+                await dio.post('${chatbotUrl}api/knowledge', data: {
                   'filename': nameController.text,
                   'content': contentController.text,
                 });
