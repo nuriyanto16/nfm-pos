@@ -109,6 +109,15 @@ def add_knowledge():
         f.write(content)
     return jsonify({"message": "File saved"})
 
+@app.route("/api/knowledge/<filename>", methods=["GET"])
+def get_knowledge_content(filename):
+    path = os.path.join(KNOWLEDGE_DIR, filename)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return jsonify({"filename": filename, "content": content})
+    return jsonify({"error": "File not found"}), 404
+
 @app.route("/api/knowledge/<filename>", methods=["DELETE"])
 def delete_knowledge(filename):
     path = os.path.join(KNOWLEDGE_DIR, filename)
