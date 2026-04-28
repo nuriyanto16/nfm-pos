@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui' as ui;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+// Conditional import for web-only functionality
+import 'chatbot_stub.dart' if (dart.library.js_util) 'chatbot_web.dart';
 
 class FloatingChatbot extends StatefulWidget {
   const FloatingChatbot({super.key});
@@ -25,18 +23,8 @@ class _FloatingChatbotState extends State<FloatingChatbot> {
     
     if (kIsWeb) {
       final String chatbotBaseUrl = dotenv.env['CHATBOT_URL']?.replaceAll('/api/', '/') ?? 'http://127.0.0.1:5000/';
-      
-      // Register the IFrame only on Web
-      // ignore: undefined_prefixed_name
-      ui.platformViewRegistry.registerViewFactory(
-        _viewId,
-        (int viewId) => html.IFrameElement()
-          ..src = chatbotBaseUrl
-          ..style.border = 'none'
-          ..style.width = '100%'
-          ..style.height = '100%'
-          ..id = 'chatbot-frame',
-      );
+      // Use the conditional function
+      registerChatbotWeb(_viewId, chatbotBaseUrl);
     }
   }
 

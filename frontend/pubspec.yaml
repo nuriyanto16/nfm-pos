@@ -23,6 +23,7 @@ dependencies:
   url_launcher: ^6.2.4
   flutter_dotenv: ^5.1.0
   shimmer: ^3.0.0
+  web: ^1.0.0
 
 dev_dependencies:
   flutter_test:
