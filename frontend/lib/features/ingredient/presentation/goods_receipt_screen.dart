@@ -16,13 +16,17 @@ final goodsReceiptProvider = StateNotifierProvider<GoodsReceiptNotifier, GoodsRe
 final suppliersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
   final res = await dio.get('suppliers');
-  return res.data['rows'] as List<dynamic>;
+  final data = res.data;
+  if (data is Map && data.containsKey('rows')) {
+    return (data['rows'] as List<dynamic>?) ?? [];
+  }
+  return [];
 });
 
 final branchesProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
   final res = await dio.get('branches');
-  return res.data as List<dynamic>;
+  return (res.data as List<dynamic>?) ?? [];
 });
 
 class GoodsReceiptState {
