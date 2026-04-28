@@ -8,6 +8,7 @@
 .env
 backend/.env
 frontend/.env
+openclaw/.env
 
 # Local logs
 *.log
@@ -19,9 +20,27 @@ backend/main.exe
 backend/tmp_build.exe
 frontend/build/
 frontend/.dart_tool/
+frontend/.packages
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+
+# Python (OpenClaw)
+__pycache__/
+*.pyc
+openclaw/__pycache__/
+openclaw/venv/
+openclaw/configuration/history.json
+openclaw/configuration/logs/
 
 # Database data
-database/pgdata/
+database/data/
+
+# Uploads (User generated content should not be in Git)
+backend/uploads/
+backend/uploads/menu/*
+backend/uploads/logo/*
+!backend/uploads/menu/.gitkeep
+!backend/uploads/logo/.gitkeep
 
 # OS files
 .DS_Store
