@@ -18,19 +18,17 @@ if GEMINI_API_KEY:
 def get_live_menu_data(query=""):
     try:
         limit = 20
-        # Determine base URL
-        base_backend_url = os.getenv("BACKEND_URL", "http://backend:8080/api/menus")
-        if "backend" not in socket.gethostname() and "127.0.0.1" in base_backend_url:
-             base_backend_url = "http://localhost:8080/api/menus"
+        # 1. Get URL from environment variable
+        # In VM, this should be set to http://host.docker.internal:8080/api/menus
+        base_url = os.getenv("BACKEND_URL", "http://localhost:8080/api/menus")
         
-        # Clean up query for search (take first 3 words if too long)
+        # 2. Add search query if provided
         search_query = ""
         if query:
-            # Simple keyword extraction: remove common words or just take the main part
             words = [w for w in query.split() if len(w) > 2]
             search_query = "+".join(words[:3])
 
-        backend_url = f"{base_backend_url}?limit={limit}"
+        backend_url = f"{base_url}?limit={limit}"
         if search_query:
             backend_url += f"&search={search_query}"
         

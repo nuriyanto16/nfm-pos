@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:ui_web' as ui;
-import 'dart:html';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:ui' as ui;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class FloatingChatbot extends StatefulWidget {
   const FloatingChatbot({super.key});
@@ -18,22 +22,29 @@ class _FloatingChatbotState extends State<FloatingChatbot> {
   @override
   void initState() {
     super.initState();
-    final String chatbotBaseUrl = dotenv.env['CHATBOT_URL']?.replaceAll('/api/', '/') ?? 'http://127.0.0.1:5000/';
     
-    // Register the IFrame
-    ui.platformViewRegistry.registerViewFactory(
-      _viewId,
-      (int viewId) => IFrameElement()
-        ..src = chatbotBaseUrl
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..id = 'chatbot-frame',
-    );
+    if (kIsWeb) {
+      final String chatbotBaseUrl = dotenv.env['CHATBOT_URL']?.replaceAll('/api/', '/') ?? 'http://127.0.0.1:5000/';
+      
+      // Register the IFrame only on Web
+      // ignore: undefined_prefixed_name
+      ui.platformViewRegistry.registerViewFactory(
+        _viewId,
+        (int viewId) => html.IFrameElement()
+          ..src = chatbotBaseUrl
+          ..style.border = 'none'
+          ..style.width = '100%'
+          ..style.height = '100%'
+          ..id = 'chatbot-frame',
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // If not web, don't show the chatbot as it relies on IFrame
+    if (!kIsWeb) return const SizedBox.shrink();
+
     return Stack(
       children: [
         if (_isExpanded)
