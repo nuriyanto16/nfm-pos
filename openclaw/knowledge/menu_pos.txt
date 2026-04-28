@@ -1,0 +1,19 @@
+=== PANDUAN MENU: POINT OF SALE (POS) ===
+
+ALUR KERJA:
+Pilih Meja -> Input Pesanan -> Simpan/Kirim ke Dapur -> Proses Pembayaran -> Cetak Struk.
+
+CARA INPUT:
+1. Akses menu 'Point of Sale' dari sidebar.
+2. Pilih nomor meja (Warna Hijau = Kosong, Kuning = Ada Pesanan).
+3. Masukkan nama pelanggan (Opsional) untuk personalisasi struk.
+4. Pilih kategori menu (sebelah kiri), lalu klik item menu yang ingin dipesan.
+5. Item akan masuk ke 'Cart' di sebelah kanan. Sesuaikan jumlah dengan tombol + / -.
+6. Tambahkan catatan khusus per item jika ada (misal: "Pedas sekali").
+7. Klik 'Simpan' untuk mengirim pesanan ke dapur (Kitchen Display).
+8. Untuk pembayaran, klik 'Pay'. Pilih metode: Tunai, QRIS, atau Kartu.
+9. Masukkan jumlah uang jika tunai, lalu klik 'Selesaikan Transaksi'.
+10. Struk akan otomatis tercetak atau bisa diprint ulang.
+
+MANFAAT:
+Transaksi cepat, integrasi langsung ke stok bahan baku, dan laporan penjualan otomatis.

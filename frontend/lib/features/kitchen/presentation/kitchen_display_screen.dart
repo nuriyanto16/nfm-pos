@@ -21,9 +21,8 @@ final kitchenOrdersProvider = StreamProvider.autoDispose<List<dynamic>>((ref) as
       allRows = res.data as List<dynamic>;
     }
     
-    // Filter: Show Pending, Proses, and Siap (only if not paid)
+    // Filter: Show Pending, Proses, and Siap (even if paid, as long as not Selesai)
     return allRows.where((o) {
-      if (o['is_paid'] == true) return false;
       final status = o['status'];
       return status == 'Pending' || status == 'Proses' || status == 'Siap';
     }).toList();
@@ -179,9 +178,10 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
               final order = sorted[index];
               final status = order['status'] as String;
               final table = order['table'];
+              final customerName = order['customer_name'] ?? 'Umum';
               final tableLabel = table != null && table['id'] != null
                   ? 'Meja ${table['table_number']}'
-                  : 'Take Away';
+                  : 'Take Away - $customerName';
 
               return _KitchenOrderCard(
                 order: order,
@@ -235,6 +235,7 @@ class _KitchenOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = order['items'] as List? ?? [];
+    final table = order['table'];
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -279,21 +280,38 @@ class _KitchenOrderCard extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(Icons.table_restaurant, color: Colors.white54, size: 16),
-                  const SizedBox(width: 4),
-                  Text(tableLabel, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.person_outline, color: Colors.white54, size: 16),
-                  const SizedBox(width: 4),
+                  Icon(
+                    table != null && table['id'] != null ? Icons.table_restaurant : Icons.local_shipping,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      order['customer_name'] ?? 'Umum',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      tableLabel,
+                      style: TextStyle(
+                        color: table != null && table['id'] != null ? Colors.white : Colors.orange.shade300,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
+              if (table != null && table['id'] != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline, color: Colors.white54, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      order['customer_name'] ?? 'Umum',
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 6),
               // Time elapsed
               _TimeElapsed(createdAt: order['created_at']),
@@ -403,23 +421,16 @@ class _KitchenOrderCard extends StatelessWidget {
                                 ),
                                 onPressed: () => onUpdateStatus('Siap'),
                                 icon: const Icon(Icons.check_circle),
-                                label: const Text('Sudah Dikirim ke Meja', style: TextStyle(fontWeight: FontWeight.bold)),
+                                label: const Text('Siap Disajikan', style: TextStyle(fontWeight: FontWeight.bold)),
                               )
-                            : Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.green.withOpacity(0.5)),
+                            : FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.teal,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.done_all, color: Colors.green, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('DIKIRIM (Menunggu Bayar)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
+                                onPressed: () => onUpdateStatus('Selesai'),
+                                icon: const Icon(Icons.done_all),
+                                label: const Text('Selesai (Hapus dari Display)', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
               ),
             ],
@@ -534,7 +545,18 @@ class _TimeElapsedState extends State<_TimeElapsed> {
     if (widget.createdAt != null) {
       final created = DateTime.tryParse(widget.createdAt!);
       if (created != null && mounted) {
-        setState(() => _elapsed = DateTime.now().difference(created));
+        // Use UTC for both to avoid timezone confusion
+        final now = DateTime.now().toUtc();
+        final createdUtc = created.isUtc ? created : created.toUtc();
+        
+        Duration diff = now.difference(createdUtc);
+        
+        // If server time is slightly ahead of client, don't show negative
+        if (diff.isNegative) {
+          diff = Duration.zero;
+        }
+        
+        setState(() => _elapsed = diff);
       }
     }
   }
@@ -549,26 +571,53 @@ class _TimeElapsedState extends State<_TimeElapsed> {
   Widget build(BuildContext context) {
     final mins = _elapsed.inMinutes;
     final secs = _elapsed.inSeconds % 60;
-    final color = mins >= 15 ? Colors.red : mins >= 5 ? Colors.orange : Colors.green;
-    final label = mins >= 15 ? '⚠️ TERLALU LAMA' : mins >= 5 ? '⏰ Segera' : '✓ Normal';
+    
+    // Professional Resto Thresholds
+    Color color = Colors.green;
+    String label = 'Normal';
+    
+    if (mins >= 25) {
+      color = Colors.redAccent;
+      label = 'Terlambat';
+    } else if (mins >= 15) {
+      color = Colors.orangeAccent;
+      label = 'Lambat';
+    } else if (mins >= 8) {
+      color = Colors.yellowAccent;
+      label = 'Perhatian';
+    } else {
+      color = Colors.greenAccent;
+      label = 'Cepat';
+    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.timer_outlined, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            '${mins}m ${secs}s',
-            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
-          ),
+          Icon(Icons.timer_outlined, size: 16, color: color),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color.withOpacity(0.7), fontSize: 10)),
+          Text(
+            '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'monospace'),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              label.toUpperCase(),
+              style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900),
+            ),
+          ),
         ],
       ),
     );

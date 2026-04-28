@@ -32,6 +32,9 @@ func CreateSupplier(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if companyID, exists := c.Get("companyID"); exists {
+		supplier.CompanyID = companyID.(uint)
+	}
 	if err := database.DB.Create(&supplier).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create supplier"})
 		return
@@ -95,6 +98,9 @@ func CreateIngredient(c *gin.Context) {
 	if err := c.ShouldBindJSON(&ingredient); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if companyID, exists := c.Get("companyID"); exists {
+		ingredient.CompanyID = companyID.(uint)
 	}
 	if err := database.DB.Create(&ingredient).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ingredient"})

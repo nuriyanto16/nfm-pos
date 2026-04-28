@@ -11,17 +11,17 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./database/data:/var/lib/postgresql/data
       - ./database/init_v4.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pos_user -d pos_db"]
+      test: [ "CMD-SHELL", "pg_isready -U pos_user -d pos_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: pos_backend
@@ -53,5 +53,20 @@ services:
       - backend
     restart: unless-stopped
 
-volumes:
-  pgdata:
+  openclaw:
+    build:
+      context: ./openclaw
+      dockerfile: Dockerfile
+    container_name: pos_openclaw
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./openclaw:/openclaw/configuration/
+      - ./openclaw/logs:/openclaw/configuration/logs
+
+# volumes section removed as no named volumes are being used.

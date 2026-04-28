@@ -1,0 +1,21 @@
+=== PANDUAN MENU: KEUANGAN (FINANCE) ===
+
+A. JURNAL UMUM
+ALUR: Catat Transaksi Non-Penjualan -> Debit/Kredit -> Laporan Keuangan.
+CARA INPUT:
+1. Pilih menu 'Jurnal Umum'.
+2. Klik 'Tambah Jurnal'.
+3. Isi deskripsi transaksi (misal: "Bayar Listrik Bulanan").
+4. Pilih Akun (COA) yang sesuai. Contoh: Debit 'Beban Listrik', Kredit 'Kas'.
+5. Pastikan nilai Debit dan Kredit seimbang (Balance).
+6. Klik 'Simpan'.
+
+B. CHART OF ACCOUNTS (COA)
+- Daftar akun keuangan yang digunakan di restoran (Kas, Bank, Beban, Pendapatan).
+- Anda bisa menambah akun baru dengan kode yang terstruktur (misal: 5-501 untuk Beban Gaji).
+
+C. BUKU BESAR
+- Menampilkan rincian mutasi untuk setiap akun tertentu dalam periode waktu yang dipilih.
+
+MANFAAT:
+Laporan laba rugi real-time, transparansi pengeluaran operasional, dan kemudahan audit.

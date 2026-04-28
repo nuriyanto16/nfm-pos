@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"pos-resto/backend/database"
+	"pos-resto/backend/internal/middleware"
 	"pos-resto/backend/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -10,9 +11,8 @@ import (
 
 func GetSettings(c *gin.Context) {
 	var settings []models.SystemSetting
-	branchID, _ := c.Get("branchID")
 	
-	database.DB.Where("branch_id = ? OR branch_id IS NULL", branchID).Find(&settings)
+	database.DB.Scopes(middleware.GetQueryScope(c)).Find(&settings)
 
 	// Convert to map for easier frontend consumption
 	settingsMap := make(map[string]string)
@@ -30,17 +30,28 @@ func UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	branchIDVal, _ := c.Get("branchID")
-	branchID := branchIDVal.(uint)
+	branchIDVal, exists := c.Get("branchID")
+	var branchID *uint
+	if exists && branchIDVal != nil {
+		id := branchIDVal.(uint)
+		branchID = &id
+	}
 
 	for key, value := range req {
 		var setting models.SystemSetting
-		err := database.DB.Where("branch_id = ? AND key = ?", branchID, key).First(&setting).Error
+		query := database.DB.Where("key = ?", key)
+		if branchID != nil {
+			query = query.Where("branch_id = ?", *branchID)
+		} else {
+			query = query.Where("branch_id IS NULL")
+		}
+
+		err := query.First(&setting).Error
 		
 		if err != nil {
 			// Create new
 			setting = models.SystemSetting{
-				BranchID: &branchID,
+				BranchID: branchID,
 				Key:      key,
 				Value:    value,
 			}

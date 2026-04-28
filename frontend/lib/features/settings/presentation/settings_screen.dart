@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/theme_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -85,7 +86,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         'acc_inventory_id': _accInventoryId,
         'logo_url': _logoUrl,
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Pengaturan berhasil disimpan')));
+      if (mounted) {
+        ref.invalidate(settingsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Pengaturan berhasil disimpan')));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
     } finally {
@@ -101,8 +105,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       setState(() => _isLoading = true);
       
+      final bytes = await image.readAsBytes();
       final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(image.path, filename: image.name),
+        'image': MultipartFile.fromBytes(bytes, filename: image.name),
       });
 
       final res = await ref.read(dioProvider).post('settings/logo', data: formData);
@@ -147,16 +152,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                color: colorScheme.surfaceVariant,
+                                color: colorScheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(16),
-                                image: _logoUrl != null
+                                image: (_logoUrl != null && _logoUrl!.isNotEmpty && _logoUrl != '/')
                                     ? DecorationImage(
-                                        image: NetworkImage('${dotenv.get('BASE_URL').replaceAll('/api', '')}$_logoUrl'),
+                                        image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$_logoUrl'),
                                         fit: BoxFit.contain,
                                       )
                                     : null,
                               ),
-                              child: _logoUrl == null
+                              child: (_logoUrl == null || _logoUrl!.isEmpty || _logoUrl == '/')
                                   ? const Icon(Icons.restaurant, size: 48, color: Colors.grey)
                                   : null,
                             ),

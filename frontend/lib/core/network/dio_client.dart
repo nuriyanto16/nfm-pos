@@ -25,6 +25,6 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 final imageBaseUrlProvider = Provider<String>((ref) {
-  final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api/';
-  return baseUrl.replaceAll('/api/', '');
+  final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
+  return baseUrl.split('/api')[0];
 });

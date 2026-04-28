@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"pos-resto/backend/database"
 	"pos-resto/backend/internal/middleware"
 	"pos-resto/backend/internal/models"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +29,11 @@ func CreateTable(c *gin.Context) {
 	if err := c.ShouldBindJSON(&table); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Set company from user
+	if companyID, exists := c.Get("companyID"); exists {
+		table.CompanyID = companyID.(uint)
 	}
 
 	// Set branch from user if not provided
@@ -115,4 +122,57 @@ func DeleteTable(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Table deleted successfully"})
+}
+
+func UploadTableImage(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No image uploaded"})
+		return
+	}
+
+	id := c.Param("id")
+	filename := fmt.Sprintf("table_%s_%d.png", id, time.Now().Unix())
+	filepath := fmt.Sprintf("uploads/tables/%s", filename)
+
+	if err := c.SaveUploadedFile(file, filepath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+		return
+	}
+
+	imageURL := "/" + filepath
+	if err := database.DB.Model(&models.Table{}).Where("id = ?", id).Update("image_url", imageURL).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update table image URL"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"image_url": imageURL})
+}
+
+func BulkUpdateTablePositions(c *gin.Context) {
+	var req []struct {
+		ID        uint    `json:"id" binding:"required"`
+		PositionX float64 `json:"position_x"`
+		PositionY float64 `json:"position_y"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	tx := database.DB.Begin()
+	for _, t := range req {
+		if err := tx.Model(&models.Table{}).Where("id = ?", t.ID).Updates(map[string]interface{}{
+			"position_x": t.PositionX,
+			"position_y": t.PositionY,
+		}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update table positions"})
+			return
+		}
+	}
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Table positions updated successfully"})
 }

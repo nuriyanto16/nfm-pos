@@ -18,6 +18,8 @@ import 'features/customer/presentation/customer_management_screen.dart';
 import 'features/order/presentation/order_list_screen.dart';
 import 'features/branch/presentation/branch_management_screen.dart';
 import 'features/table/presentation/table_management_screen.dart';
+import 'features/table/presentation/table_monitoring_screen.dart';
+import 'features/table/presentation/table_layout_screen.dart';
 import 'features/report/presentation/financial_report_screen.dart';
 import 'features/report/presentation/ingredient_report_screen.dart';
 import 'features/finance/presentation/coa_management_screen.dart';
@@ -28,6 +30,13 @@ import 'features/ingredient/presentation/stock_management_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/wa_log/presentation/wa_log_screen.dart';
 import 'features/management/presentation/sidebar_management_screen.dart';
+import 'features/management/presentation/company_management_screen.dart';
+import 'features/ingredient/presentation/goods_receipt_screen.dart';
+import 'features/ingredient/presentation/goods_issue_screen.dart';
+import 'features/ingredient/presentation/branch_order_screen.dart';
+import 'features/dashboard/presentation/executive_dashboard_screen.dart';
+import 'features/chatbot/presentation/chatbot_history_screen.dart';
+import 'features/chatbot/presentation/knowledge_management_screen.dart';
 import 'shared/widgets/sidebar_layout.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/theme_provider.dart';
@@ -130,6 +139,14 @@ final _router = GoRouter(
           builder: (context, state) => const TableManagementScreen(),
         ),
         GoRoute(
+          path: '/monitoring-tables',
+          builder: (context, state) => const TableMonitoringScreen(),
+        ),
+        GoRoute(
+          path: '/layout-tables',
+          builder: (context, state) => const TableLayoutScreen(),
+        ),
+        GoRoute(
           path: '/finance/coa',
           builder: (context, state) => const CoaManagementScreen(),
         ),
@@ -160,6 +177,34 @@ final _router = GoRouter(
         GoRoute(
           path: '/wa-logs',
           builder: (context, state) => const WALogScreen(),
+        ),
+        GoRoute(
+          path: '/chatbot-logs',
+          builder: (context, state) => const ChatbotHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/chatbot-knowledge',
+          builder: (context, state) => const KnowledgeManagementScreen(),
+        ),
+        GoRoute(
+          path: '/inventory/receipts',
+          builder: (context, state) => const GoodsReceiptScreen(),
+        ),
+        GoRoute(
+          path: '/inventory/issues',
+          builder: (context, state) => const GoodsIssueScreen(),
+        ),
+        GoRoute(
+          path: '/inventory/branch-orders',
+          builder: (context, state) => const BranchOrderScreen(),
+        ),
+        GoRoute(
+          path: '/companies',
+          builder: (context, state) => const CompanyManagementScreen(),
+        ),
+        GoRoute(
+          path: '/dashboard/executive',
+          builder: (context, state) => const ExecutiveDashboardScreen(),
         ),
       ],
     ),

@@ -1,0 +1,20 @@
+=== PANDUAN MENU: MASTER DATA (MENU, MEJA, PELANGGAN) ===
+
+A. MANAJEMEN MENU
+1. Masuk ke menu 'Manajemen Menu'.
+2. Klik 'Tambah'. Masukkan nama, harga, dan kategori.
+3. Upload foto produk agar tampilan di POS menarik.
+4. Set status 'Tersedia' atau 'Kosong' untuk menyembunyikan item dari kasir.
+
+B. MANAJEMEN MEJA
+1. Masuk ke menu 'Meja' atau 'Denah Meja'.
+2. Tambahkan nomor meja baru atau atur posisi meja sesuai layout restoran Anda.
+3. Tentukan kapasitas kursi per meja.
+
+C. MANAJEMEN PELANGGAN
+1. Catat data pelanggan di menu 'Pelanggan'.
+2. Masukkan Nomor HP (WA) untuk program loyalitas atau pengiriman struk digital.
+3. Anda bisa memantau total poin dan tier pelanggan (Bronze/Silver/Gold).
+
+MANFAAT:
+Memudahkan pengaturan layout resto secara fleksibel dan membangun database pelanggan untuk marketing.

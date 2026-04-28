@@ -24,8 +24,22 @@ type SidebarMenu struct {
 	Children  []SidebarMenu `gorm:"foreignKey:ParentID" json:"children,omitempty"`
 }
 
+type Company struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"not null;type:varchar(150)" json:"name"`
+	Code      string    `gorm:"unique;not null;type:varchar(50)" json:"code"`
+	Address   string    `json:"address"`
+	Phone     string    `gorm:"type:varchar(20)" json:"phone"`
+	Email     string    `gorm:"type:varchar(100)" json:"email"`
+	LogoURL   string    `json:"logo_url"`
+	IsActive  bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Branch struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
+	CompanyID uint      `json:"company_id"`
+	Company   *Company  `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 	Name      string    `gorm:"not null;type:varchar(150)" json:"name"`
 	Code      string    `gorm:"unique;not null;type:varchar(50)" json:"code"`
 	Address   string    `json:"address"`
@@ -37,6 +51,8 @@ type Branch struct {
 
 type User struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
+	CompanyID    uint      `json:"company_id"`
+	Company      *Company  `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 	FullName     string    `gorm:"type:varchar(100)" json:"full_name"`
 	Username     string    `gorm:"unique;not null;type:varchar(50)" json:"username"`
 	PasswordHash string    `gorm:"not null" json:"-"`
@@ -52,6 +68,7 @@ type User struct {
 
 type Category struct {
 	ID          uint    `gorm:"primaryKey" json:"id"`
+	CompanyID   uint    `json:"company_id"`
 	BranchID    *uint   `json:"branch_id"`
 	Name        string  `gorm:"unique;not null;type:varchar(100)" json:"name"`
 	Description string  `json:"description"`
@@ -59,6 +76,7 @@ type Category struct {
 
 type Menu struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
+	CompanyID   uint      `json:"company_id"`
 	BranchID    *uint     `json:"branch_id"`
 	CategoryID  uint      `json:"category_id"`
 	Category    Category  `gorm:"foreignKey:CategoryID" json:"category"`
@@ -76,6 +94,7 @@ type Menu struct {
 
 type Ingredient struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
+	CompanyID    uint      `json:"company_id"`
 	BranchID     *uint     `json:"branch_id"`
 	Name         string    `gorm:"not null;type:varchar(100)" json:"name"`
 	Unit         string    `gorm:"not null;type:varchar(20)" json:"unit"` // gram, ml, pcs, etc.
@@ -101,6 +120,7 @@ type MenuIngredient struct {
 
 type Supplier struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
+	CompanyID     uint      `json:"company_id"`
 	BranchID      *uint     `json:"branch_id"`
 	Name          string    `gorm:"not null;type:varchar(150)" json:"name"`
 	ContactPerson string    `gorm:"type:varchar(100)" json:"contact_person"`
@@ -116,6 +136,7 @@ type Supplier struct {
 
 type Customer struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
+	CompanyID      uint      `json:"company_id"`
 	BranchID       *uint     `json:"branch_id"`
 	Name           string    `gorm:"not null;type:varchar(100)" json:"name"`
 	Phone          string    `gorm:"type:varchar(20)" json:"phone"`
@@ -132,6 +153,7 @@ type Customer struct {
 
 type Promo struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
+	CompanyID    uint      `json:"company_id"`
 	BranchID     *uint     `json:"branch_id"`
 	Name         string    `gorm:"not null;type:varchar(100)" json:"name"`
 	Description  string    `json:"description"`
@@ -149,10 +171,15 @@ type Promo struct {
 
 type Table struct {
 	ID          uint    `gorm:"primaryKey" json:"id"`
+	CompanyID   uint    `json:"company_id"`
 	BranchID    uint    `json:"branch_id"`
 	Branch      Branch  `gorm:"foreignKey:BranchID" json:"branch"`
 	TableNumber string  `gorm:"not null;type:varchar(10)" json:"table_number"`
 	Capacity    int     `gorm:"default:4" json:"capacity"`
+	Floor       string  `gorm:"type:varchar(20)" json:"floor"`
+	ImageURL    string  `json:"image_url"`
+	PositionX   float64 `gorm:"default:0" json:"position_x"`
+	PositionY   float64 `gorm:"default:0" json:"position_y"`
 	Status      string  `gorm:"default:'Kosong';type:varchar(20)" json:"status"` // Kosong, Dipesan, Digunakan
 }
 
@@ -160,6 +187,7 @@ type Table struct {
 
 type Order struct {
 	ID             uint        `gorm:"primaryKey" json:"id"`
+	CompanyID      uint        `json:"company_id"`
 	BranchID       uint        `json:"branch_id"`
 	Branch         Branch      `gorm:"foreignKey:BranchID" json:"branch"`
 	TableID        *uint       `json:"table_id"`
@@ -199,6 +227,7 @@ type OrderItem struct {
 
 type Payment struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
+	CompanyID     uint      `json:"company_id"`
 	BranchID      uint      `json:"branch_id"`
 	OrderID       uint      `gorm:"not null;unique" json:"order_id"`
 	Order         Order     `gorm:"foreignKey:OrderID" json:"order"`
@@ -213,6 +242,7 @@ type Payment struct {
 
 type CashierSession struct {
 	ID           uint       `gorm:"primaryKey" json:"id"`
+	CompanyID    uint       `json:"company_id"`
 	BranchID     uint       `json:"branch_id"`
 	UserID       uint       `gorm:"not null" json:"user_id"`
 	User         User       `gorm:"foreignKey:UserID" json:"user"`
@@ -230,6 +260,7 @@ type CashierSession struct {
 
 type SystemSetting struct {
 	ID        uint   `gorm:"primaryKey" json:"id"`
+	CompanyID uint   `json:"company_id"`
 	BranchID  *uint  `gorm:"uniqueIndex:idx_branch_key" json:"branch_id"`
 	Key       string `gorm:"uniqueIndex:idx_branch_key;not null;type:varchar(50)" json:"key"` // tax_pct, service_charge_pct
 	Value     string `gorm:"not null" json:"value"`
@@ -241,6 +272,7 @@ type SystemSetting struct {
 
 type Account struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
+	CompanyID   uint      `json:"company_id"`
 	BranchID    *uint     `json:"branch_id"`
 	Code        string    `gorm:"uniqueIndex:idx_branch_code;not null;type:varchar(20)" json:"code"`
 	Name        string    `gorm:"not null;type:varchar(100)" json:"name"`
@@ -252,6 +284,7 @@ type Account struct {
 
 type JournalEntry struct {
 	ID          uint          `gorm:"primaryKey" json:"id"`
+	CompanyID   uint          `json:"company_id"`
 	BranchID    uint          `json:"branch_id"`
 	Date        time.Time     `gorm:"not null" json:"date"`
 	Description string        `json:"description"`
@@ -273,6 +306,7 @@ type JournalItem struct {
 
 type StockHistory struct {
 	ID           uint       `gorm:"primaryKey" json:"id"`
+	CompanyID    uint       `json:"company_id"`
 	BranchID     uint       `json:"branch_id"`
 	IngredientID uint       `gorm:"not null" json:"ingredient_id"`
 	Ingredient   Ingredient `gorm:"foreignKey:IngredientID" json:"ingredient"`
@@ -286,6 +320,7 @@ type StockHistory struct {
 
 type WALog struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
+	CompanyID  uint      `json:"company_id"`
 	BranchID   uint      `json:"branch_id"`
 	OrderID    uint      `json:"order_id"`
 	CustomerID *uint     `json:"customer_id"`
@@ -293,4 +328,85 @@ type WALog struct {
 	Message    string    `json:"message"`
 	Status     string    `json:"status"` // Success, Failed
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+// ─── Goods Receipt & Issue (Inventory Management) ──────────────────────────
+
+type GoodsReceipt struct {
+	ID          uint               `gorm:"primaryKey" json:"id"`
+	CompanyID   uint               `json:"company_id"`
+	BranchID    uint               `json:"branch_id"`
+	Branch      Branch             `gorm:"foreignKey:BranchID" json:"branch"`
+	SupplierID      *uint              `json:"supplier_id"`
+	Supplier        *Supplier          `gorm:"foreignKey:SupplierID" json:"supplier"`
+	ReceiptNo       string             `gorm:"unique;not null;type:varchar(50)" json:"receipt_no"`
+	VendorInvoiceNo string             `gorm:"type:varchar(50)" json:"vendor_invoice_no"`
+	ReceiptDate     time.Time          `gorm:"not null" json:"receipt_date"`
+	BranchOrderID   *uint              `json:"branch_order_id"`
+	TotalAmount     float64            `gorm:"default:0" json:"total_amount"`
+	Notes           string             `json:"notes"`
+	ReceivedBy      string             `gorm:"type:varchar(100)" json:"received_by"`
+	Status          string             `gorm:"default:'Draft';type:varchar(20)" json:"status"` // Draft, Approved, Cancelled
+	CreatedAt       time.Time          `json:"created_at"`
+	Items       []GoodsReceiptItem `gorm:"foreignKey:ReceiptID" json:"items"`
+}
+
+type GoodsReceiptItem struct {
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	ReceiptID    uint       `gorm:"not null" json:"receipt_id"`
+	IngredientID uint       `gorm:"not null" json:"ingredient_id"`
+	Ingredient   Ingredient `gorm:"foreignKey:IngredientID" json:"ingredient"`
+	Quantity     float64    `gorm:"not null" json:"quantity"`
+	CostPrice    float64    `gorm:"not null" json:"cost_price"`
+	Subtotal     float64    `gorm:"not null" json:"subtotal"`
+}
+
+type GoodsIssue struct {
+	ID        uint             `gorm:"primaryKey" json:"id"`
+	CompanyID uint             `json:"company_id"`
+	BranchID  uint             `json:"branch_id"`
+	Branch    Branch           `gorm:"foreignKey:BranchID" json:"branch"`
+	IssueNo       string           `gorm:"unique;not null;type:varchar(50)" json:"issue_no"`
+	IssueCategory string           `gorm:"type:varchar(50)" json:"issue_category"` // Waste, Transfer, Sales Adjustment
+	IssueDate     time.Time        `gorm:"not null" json:"issue_date"`
+	Notes         string           `json:"notes"`
+	IssuedBy      string           `gorm:"type:varchar(100)" json:"issued_by"`
+	Status        string           `gorm:"default:'Draft';type:varchar(20)" json:"status"` // Draft, Approved, Cancelled
+	CreatedAt     time.Time        `json:"created_at"`
+	Items     []GoodsIssueItem `gorm:"foreignKey:IssueID" json:"items"`
+}
+
+type GoodsIssueItem struct {
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	IssueID      uint       `gorm:"not null" json:"issue_id"`
+	IngredientID uint       `gorm:"not null" json:"ingredient_id"`
+	Ingredient   Ingredient `gorm:"foreignKey:IngredientID" json:"ingredient"`
+	Quantity     float64    `gorm:"not null" json:"quantity"`
+	Notes        string     `json:"notes"`
+}
+
+// ─── Branch Order (Request to Center) ─────────────────────────────────────────
+
+type BranchOrder struct {
+	ID          uint               `gorm:"primaryKey" json:"id"`
+	CompanyID   uint               `json:"company_id"`
+	BranchID    uint               `json:"branch_id"`
+	Branch      Branch             `gorm:"foreignKey:BranchID" json:"branch"`
+	OrderNo     string             `gorm:"unique;not null;type:varchar(50)" json:"order_no"`
+	OrderDate   time.Time          `gorm:"not null" json:"order_date"`
+	Notes       string             `json:"notes"`
+	RequestedBy string             `gorm:"type:varchar(100)" json:"requested_by"`
+	Status      string             `gorm:"default:'Pending';type:varchar(20)" json:"status"` // Pending, Approved, Adjusted, Fulfilled, Cancelled
+	CreatedAt   time.Time          `json:"created_at"`
+	Items       []BranchOrderItem  `gorm:"foreignKey:BranchOrderID" json:"items"`
+}
+
+type BranchOrderItem struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	BranchOrderID uint       `gorm:"not null" json:"branch_order_id"`
+	IngredientID  uint       `gorm:"not null" json:"ingredient_id"`
+	Ingredient    Ingredient `gorm:"foreignKey:IngredientID" json:"ingredient"`
+	Quantity      float64    `gorm:"not null" json:"quantity"`
+	ApprovedQty   float64    `json:"approved_qty"`
+	Notes         string     `json:"notes"`
 }

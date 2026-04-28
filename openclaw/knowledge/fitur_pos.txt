@@ -1,0 +1,39 @@
+### FITUR UTAMA POS RESTO (FRANCHISE & RETAIL READY)
+
+Sistem POS Resto dirancang untuk skala bisnis dari restoran tunggal (eceran) hingga jaringan besar (Franchise/Multi-Branch) dengan fitur-fitur berikut:
+
+1. MANAJEMEN MULTI-CABANG (FRANCHISE SYSTEM)
+   - Isolasi Data Cabang: Setiap cabang hanya dapat melihat data transaksi, stok, dan karyawannya sendiri.
+   - Dashboard Eksekutif: Pemilik pusat dapat melihat performa seluruh cabang secara real-time dari satu dashboard utama.
+   - Pengaturan Perusahaan: Mendukung banyak entitas perusahaan di bawah satu sistem.
+
+2. MANAJEMEN MEJA & MONITORING
+   - Status Meja Real-time: Memantau meja mana yang tersedia, sedang dipesan, atau perlu dibersihkan.
+   - Layout Visual: Pemetaan meja yang memudahkan server dalam mengelola pesanan.
+
+3. KITCHEN DISPLAY SYSTEM (KDS)
+   - Integrasi Dapur: Pesanan langsung masuk ke layar dapur segera setelah divalidasi.
+   - Sinkronisasi Status: Memastikan sinkronisasi antara daftar pesanan di kasir dengan proses memasak di dapur.
+   - Timer Aktivitas: Memantau durasi persiapan makanan untuk menjaga kualitas layanan.
+
+4. MANAJEMEN MENU & HARGA
+   - Kategori Menu: Pengelompokan menu (Makanan, Minuman, Dessert).
+   - Hak Akses Menu: Pengaturan privilese menu per peran (Role) untuk keamanan data.
+
+5. MANAJEMEN INVENTORI & STOK
+   - Goods Receipt (Penerimaan Barang): Mencatat masuknya bahan baku dari supplier.
+   - Goods Issue (Pengeluaran Barang): Mencatat pemakaian bahan baku untuk operasional.
+   - Notifikasi Stok Rendah: Membantu kontrol stok agar tidak kehabisan bahan.
+
+6. SISTEM PEMBAYARAN FLEKSIBEL
+   - Metode Pembayaran: Mendukung Tunai, QRIS, Kartu Kredit/Debit, dan E-Wallet.
+   - Cetak PDF Struk: Integrasi pencetakan struk pembayaran yang profesional.
+
+7. KEAMANAN & ROLE MANAGEMENT
+   - Role & Privilege: Pengaturan hak akses detail (Admin, Kasir, Dapur, Executive).
+   - Verifikasi Captcha: Keamanan tambahan pada halaman login untuk mencegah akses ilegal.
+
+8. TEKNOLOGI MODERN
+   - Backend: Menggunakan Go (Golang) yang sangat cepat dan efisien.
+   - Frontend: Menggunakan Flutter untuk antarmuka yang responsif dan modern.
+   - Database: PostgreSQL untuk penyimpanan data yang tangguh dan terjamin integritasnya.

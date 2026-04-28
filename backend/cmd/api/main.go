@@ -35,6 +35,7 @@ func main() {
 	// Public routes
 	api.POST("/login", handlers.Login)
 	api.GET("/captcha", handlers.GenerateCaptcha)
+	api.GET("/menus", handlers.GetMenus) // Allow chatbot/public to see menu prices
 
 	// Protected routes
 	protected := api.Group("/")
@@ -54,7 +55,6 @@ func main() {
 	protected.DELETE("/roles/:id", handlers.DeleteRole)
 
 	// ─── Menus ────────────────────────────────────────────────────────────────
-	protected.GET("/menus", handlers.GetMenus)
 	protected.GET("/menus/:id", handlers.GetMenuByID)
 	protected.POST("/menus", handlers.CreateMenu)
 	protected.PUT("/menus/:id", handlers.UpdateMenu)
@@ -85,7 +85,9 @@ func main() {
 	protected.GET("/tables", handlers.GetTables)
 	protected.POST("/tables", handlers.CreateTable)
 	protected.PUT("/tables/:id", handlers.UpdateTable)
+	protected.PUT("/tables/bulk-positions", handlers.BulkUpdateTablePositions)
 	protected.PUT("/tables/:id/status", handlers.UpdateTableStatus)
+	protected.POST("/tables/:id/image", handlers.UploadTableImage)
 	protected.DELETE("/tables/:id", handlers.DeleteTable)
 
 	// ─── Orders ───────────────────────────────────────────────────────────────
@@ -162,6 +164,31 @@ func main() {
 	// ─── Stock & Ingredients ──────────────────────────────────────────────────
 	// ─── WA Logs ─────────────────────────────────────────────────────────────
 	protected.GET("/wa-logs", handlers.GetWALogs)
+
+	// ─── Inventory Management ──────────────────────────────────────────────────
+	protected.GET("/inventory/receipts", handlers.GetGoodsReceipts)
+	protected.POST("/inventory/receipts", handlers.CreateGoodsReceipt)
+	protected.PUT("/inventory/receipts/:id/approve", handlers.ApproveGoodsReceipt)
+	protected.GET("/inventory/receipts/:id", handlers.GetGoodsReceiptByID)
+	protected.GET("/inventory/issues", handlers.GetGoodsIssues)
+	protected.POST("/inventory/issues", handlers.CreateGoodsIssue)
+	protected.PUT("/inventory/issues/:id/approve", handlers.ApproveGoodsIssue)
+	protected.GET("/inventory/issues/:id", handlers.GetGoodsIssueByID)
+	protected.GET("/inventory/branch-orders", handlers.GetBranchOrders)
+	protected.GET("/inventory/branch-orders/:id", handlers.GetBranchOrderByID)
+	protected.POST("/inventory/branch-orders", handlers.CreateBranchOrder)
+	protected.PUT("/inventory/branch-orders/:id/status", handlers.UpdateBranchOrderStatus)
+
+	// ─── Company Management ─────────────────────────────────────────────────────
+	protected.GET("/companies", handlers.GetCompanies)
+	protected.GET("/companies/:id", handlers.GetCompanyByID)
+	protected.POST("/companies", handlers.CreateCompany)
+	protected.POST("/companies/upload", handlers.UploadCompanyLogo)
+	protected.PUT("/companies/:id", handlers.UpdateCompany)
+	protected.DELETE("/companies/:id", handlers.DeleteCompany)
+
+	// ─── Executive Dashboard ────────────────────────────────────────────────────
+	protected.GET("/dashboard/executive", handlers.GetExecutiveDashboardStats)
 
 	port := os.Getenv("PORT")
 	if port == "" {

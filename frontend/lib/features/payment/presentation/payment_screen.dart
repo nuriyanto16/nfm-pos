@@ -217,7 +217,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final amountPaid = double.tryParse(amountController.text.replaceAll('.', '').replaceAll(',', '')) ?? 0;
     final change = amountPaid - total;
     final isNonCash = selectedMethod != 'Tunai';
-    final canPay = !isProcessing && (isNonCash || change >= 0) && (createdOrder != null || cart.items.isNotEmpty);
+    final bool isPaid = createdOrder != null && (createdOrder!['is_paid'] == true);
+    final canPay = !isPaid && !isProcessing && (isNonCash || change >= 0) && (createdOrder != null || cart.items.isNotEmpty);
 
     return Scaffold(
       appBar: AppBar(
@@ -230,15 +231,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth >= 768) {
-            return _buildDesktop(cart, total, taxAmount, calculatedShippingFee, change, isNonCash, canPay, isLoadedOrder);
+            return _buildDesktop(cart, total, taxAmount, calculatedShippingFee, change, isNonCash, canPay, isLoadedOrder, isPaid);
           }
-          return _buildMobile(cart, total, taxAmount, calculatedShippingFee, change, isNonCash, canPay, isLoadedOrder);
+          return _buildMobile(cart, total, taxAmount, calculatedShippingFee, change, isNonCash, canPay, isLoadedOrder, isPaid);
         },
       ),
     );
   }
 
-  Widget _buildDesktop(cart, double total, double taxAmount, double shippingFeeAmount, double change, bool isNonCash, bool canPay, bool isLoadedOrder) {
+  Widget _buildDesktop(cart, double total, double taxAmount, double shippingFeeAmount, double change, bool isNonCash, bool canPay, bool isLoadedOrder, bool isPaid) {
     return Row(
       children: [
         // Left: Order Summary
@@ -251,6 +252,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               taxAmount: taxAmount,
               shippingFee: shippingFeeAmount,
               isLoadedOrder: isLoadedOrder,
+              isPaid: isPaid,
             ),
           ),
         ),
@@ -281,7 +283,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     );
   }
 
-  Widget _buildMobile(cart, double total, double taxAmount, double shippingFeeAmount, double change, bool isNonCash, bool canPay, bool isLoadedOrder) {
+  Widget _buildMobile(cart, double total, double taxAmount, double shippingFeeAmount, double change, bool isNonCash, bool canPay, bool isLoadedOrder, bool isPaid) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -292,6 +294,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             taxAmount: taxAmount,
             shippingFee: shippingFeeAmount,
             isLoadedOrder: isLoadedOrder,
+            isPaid: isPaid,
           ),
           const SizedBox(height: 16),
           _PaymentForm(
@@ -306,6 +309,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             isNonCash: isNonCash,
             canPay: canPay,
             isProcessing: isProcessing,
+            isPaid: isPaid,
             onMethodChanged: (v) => setState(() => selectedMethod = v),
             onAmountChanged: () => setState(() {}),
             onPay: _processPayment,
@@ -323,6 +327,7 @@ class _OrderSummaryCard extends StatelessWidget {
   final double taxAmount;
   final double shippingFee;
   final bool isLoadedOrder;
+  final bool isPaid;
 
   const _OrderSummaryCard({
     required this.cart,
@@ -330,10 +335,14 @@ class _OrderSummaryCard extends StatelessWidget {
     required this.taxAmount,
     this.shippingFee = 0,
     this.isLoadedOrder = false,
+    this.isPaid = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isMap = cart is Map;
+    final List<dynamic> items = isMap ? (cart['items'] as List? ?? []) : (cart as CartState).items;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -347,13 +356,13 @@ class _OrderSummaryCard extends StatelessWidget {
               child: ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: isLoadedOrder ? (cart['items'] as List).length : cart.items.length,
+                itemCount: items.length,
                 itemBuilder: (context, index) {
-                  final item = isLoadedOrder ? cart['items'][index] : cart.items[index];
-                  final name = isLoadedOrder ? item['menu']['name'] : item.name;
-                  final qty = isLoadedOrder ? item['quantity'] : item.quantity;
-                  final price = isLoadedOrder ? (item['price'] as num).toDouble() : item.price;
-                  final subtotal = isLoadedOrder ? (item['subtotal'] as num).toDouble() : item.subtotal;
+                  final item = items[index];
+                  final name = isMap ? (item['menu']?['name'] ?? 'Menu') : item.name;
+                  final qty = isMap ? item['quantity'] : item.quantity;
+                  final price = isMap ? (item['price'] as num).toDouble() : item.price;
+                  final subtotal = isMap ? (item['subtotal'] as num).toDouble() : item.subtotal;
                   
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -367,11 +376,11 @@ class _OrderSummaryCard extends StatelessWidget {
             ),
             const Divider(height: 24),
             const Divider(height: 24),
-            _PriceRow(label: 'Subtotal', value: isLoadedOrder ? (cart['total_amount'] as num).toDouble() / 1.1 : cart.subtotal),
-            if ((isLoadedOrder ? (cart['discount_amount'] as num).toDouble() : cart.discountAmount) > 0)
+            _PriceRow(label: 'Subtotal', value: isMap ? (cart['total_amount'] as num).toDouble() / 1.1 : cart.subtotal),
+            if ((isMap ? (cart['discount_amount'] as num).toDouble() : cart.discountAmount) > 0)
               _PriceRow(
                 label: 'Diskon', 
-                value: isLoadedOrder ? -(cart['discount_amount'] as num).toDouble() : -cart.discountAmount, 
+                value: isMap ? -(cart['discount_amount'] as num).toDouble() : -cart.discountAmount, 
                 color: Colors.red
               ),
             if (shippingFee > 0)
@@ -415,10 +424,13 @@ class _PaymentForm extends StatelessWidget {
     required this.isNonCash,
     required this.canPay,
     required this.isProcessing,
+    this.isPaid = false,
     required this.onMethodChanged,
     required this.onAmountChanged,
     required this.onPay,
   });
+  
+  final bool isPaid;
 
   static const _methods = [
     {'value': 'Tunai', 'icon': Icons.payments_outlined, 'label': 'Tunai'},
@@ -582,11 +594,14 @@ class _PaymentForm extends StatelessWidget {
         SizedBox(
           height: 56,
           child: FilledButton(
-            onPressed: canPay ? onPay : null,
+            onPressed: canPay ? onPay : (isPaid ? () => onPay() : null),
+            style: isPaid ? FilledButton.styleFrom(backgroundColor: Colors.green) : null,
             child: isProcessing
                 ? const CircularProgressIndicator(color: Colors.white)
-                : Text('BAYAR ${formatRupiah(total)}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                : Text(
+                    isPaid ? 'SUDAH DIBAYAR (LIHAT STRUK)' : 'BAYAR ${formatRupiah(total)}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
           ),
         ),
       ],

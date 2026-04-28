@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"pos-resto/backend/database"
+	"pos-resto/backend/internal/middleware"
 	"pos-resto/backend/internal/models"
 	"time"
 
@@ -13,9 +14,8 @@ import (
 
 func GetCOA(c *gin.Context) {
 	var accounts []models.Account
-	branchID, _ := c.Get("branchID")
 	
-	database.DB.Where("branch_id = ? OR branch_id IS NULL", branchID).Order("code asc").Find(&accounts)
+	database.DB.Scopes(middleware.GetQueryScope(c)).Order("code asc").Find(&accounts)
 	c.JSON(http.StatusOK, accounts)
 }
 
@@ -41,7 +41,7 @@ func CreateAccount(c *gin.Context) {
 func UpdateAccount(c *gin.Context) {
 	id := c.Param("id")
 	var account models.Account
-	if err := database.DB.First(&account, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&account, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 		return
 	}
@@ -68,7 +68,7 @@ func UpdateAccount(c *gin.Context) {
 
 func DeleteAccount(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Delete(&models.Account{}, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Delete(&models.Account{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete account"})
 		return
 	}
@@ -79,12 +79,11 @@ func DeleteAccount(c *gin.Context) {
 
 func GetJournal(c *gin.Context) {
 	var entries []models.JournalEntry
-	branchID, _ := c.Get("branchID")
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 
-	db := database.DB.Model(&models.JournalEntry{}).Where("branch_id = ?", branchID).Preload("Items.Account")
+	db := database.DB.Model(&models.JournalEntry{}).Scopes(middleware.GetQueryScope(c)).Preload("Items.Account")
 
 	if startDate != "" && endDate != "" {
 		db = db.Where("date BETWEEN ? AND ?", startDate, endDate)
@@ -112,7 +111,6 @@ type GeneralLedgerRow struct {
 }
 
 func GetGeneralLedger(c *gin.Context) {
-	branchID, _ := c.Get("branchID")
 	accountID := c.Query("account_id")
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -123,9 +121,9 @@ func GetGeneralLedger(c *gin.Context) {
 	}
 
 	var journalItems []models.JournalItem
-	db := database.DB.Preload("Account").Preload("Journal").
+	db := database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Account").Preload("Journal").
 		Joins("JOIN journal_entries ON journal_entries.id = journal_items.journal_id").
-		Where("journal_entries.branch_id = ? AND journal_items.account_id = ?", branchID, accountID)
+		Where("journal_items.account_id = ?", accountID)
 
 	if startDate != "" && endDate != "" {
 		db = db.Where("journal_entries.date BETWEEN ? AND ?", startDate, endDate)
@@ -165,10 +163,12 @@ func SeedDefaultCOA(branchID uint) {
 		{BranchID: &branchID, Code: "1102", Name: "Bank", Type: "Asset", Description: "Rekening Bank"},
 		{BranchID: &branchID, Code: "1201", Name: "Persediaan Bahan Baku", Type: "Asset", Description: "Stok bahan baku dapur"},
 		{BranchID: &branchID, Code: "2101", Name: "Hutang PPN", Type: "Liability", Description: "Pajak Pertambahan Nilai yang belum disetor"},
+		{BranchID: &branchID, Code: "2102", Name: "Hutang Usaha", Type: "Liability", Description: "Hutang kepada supplier"},
 		{BranchID: &branchID, Code: "3101", Name: "Modal Pemilik", Type: "Equity", Description: "Modal awal usaha"},
 		{BranchID: &branchID, Code: "4101", Name: "Pendapatan Penjualan", Type: "Revenue", Description: "Hasil penjualan makanan & minuman"},
 		{BranchID: &branchID, Code: "4102", Name: "Pendapatan Service Charge", Type: "Revenue", Description: "Hasil biaya layanan"},
 		{BranchID: &branchID, Code: "5101", Name: "Harga Pokok Penjualan (HPP)", Type: "Expense", Description: "Biaya bahan baku terjual"},
+		{BranchID: &branchID, Code: "5102", Name: "Biaya Pengeluaran Barang", Type: "Expense", Description: "Biaya atas barang rusak/keluar non-penjualan"},
 		{BranchID: &branchID, Code: "5201", Name: "Biaya Gaji", Type: "Expense", Description: "Pengeluaran untuk gaji karyawan"},
 		{BranchID: &branchID, Code: "5202", Name: "Biaya Listrik & Air", Type: "Expense", Description: "Operasional utilitas"},
 	}

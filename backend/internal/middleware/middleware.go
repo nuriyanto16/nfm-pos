@@ -45,6 +45,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			if branchID, exists := claims["branch_id"]; exists && branchID != nil {
 				c.Set("branchID", uint(branchID.(float64)))
 			}
+			if companyID, exists := claims["company_id"]; exists && companyID != nil {
+				c.Set("companyID", uint(companyID.(float64)))
+			}
 		}
 
 		c.Next()
@@ -54,17 +57,23 @@ func AuthMiddleware() gin.HandlerFunc {
 // GetQueryScope returns a GORM scope that filters by branch_id if the user is not an admin
 func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 	role := c.GetString("role")
-	branchID, exists := c.Get("branchID")
+	branchID, branchExists := c.Get("branchID")
+	companyID, companyExists := c.Get("companyID")
 
 	return func(tx *gorm.DB) *gorm.DB {
-		// Admin can see everything
-		if role == "Admin" {
+		// Filter by company first (multi-tenancy)
+		if companyExists && companyID != nil {
+			tx = tx.Where("company_id = ?", companyID)
+		}
+
+		// Executive can see everything within company (all branches)
+		if role == "Executive" {
 			return tx
 		}
 
 		// Others are scoped to their branch, allowing NULL branch_id (global items)
-		if exists && branchID != nil {
-			return tx.Where("branch_id = ? OR branch_id IS NULL", branchID)
+		if branchExists && branchID != nil {
+			return tx.Where("(branch_id = ? OR branch_id IS NULL)", branchID)
 		}
 
 		return tx

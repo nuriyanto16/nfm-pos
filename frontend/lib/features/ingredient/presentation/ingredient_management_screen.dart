@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
 
+final ingredientListProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final dio = ref.read(dioProvider);
+  final res = await dio.get('ingredients');
+  if (res.data is Map) return res.data['rows'] ?? [];
+  return res.data ?? [];
+});
+
 class IngredientManagementScreen extends ConsumerStatefulWidget {
   const IngredientManagementScreen({super.key});
 

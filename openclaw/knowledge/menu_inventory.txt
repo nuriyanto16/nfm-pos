@@ -1,0 +1,26 @@
+=== PANDUAN MENU: INVENTORY (BARANG MASUK & KELUAR) ===
+
+A. BARANG MASUK (GOODS RECEIPT)
+ALUR: Terima Barang -> Input Data -> Update Stok Gudang.
+CARA INPUT:
+1. Pilih menu 'Barang Masuk'.
+2. Klik 'Tambah Baru' (+).
+3. Pilih 'Supplier' dan isi nomor invoice vendor.
+4. Klik 'Tambah Item'. Cari nama bahan baku (misal: Beras, Ayam).
+5. Masukkan jumlah (Quantity) dan harga beli per unit.
+6. Klik 'Simpan'. Stok di database akan otomatis bertambah sesuai inputan.
+
+B. BARANG KELUAR (GOODS ISSUE)
+ALUR: Pemakaian Bahan -> Input Pengurangan -> Update Stok.
+CARA INPUT:
+1. Pilih menu 'Barang Keluar'.
+2. Masukkan kategori pengeluaran (misal: Rusak, Kadaluarsa, Pemakaian Internal).
+3. Pilih item bahan baku dan masukkan jumlah yang berkurang.
+4. Klik 'Simpan'. Stok akan berkurang secara manual (di luar pengurangan otomatis dari penjualan POS).
+
+C. PESANAN CABANG (BRANCH ORDER)
+- Digunakan untuk memesan bahan baku antar cabang atau ke pusat (Franchise).
+- Alur: Input Request -> Tunggu Approval -> Terima Barang.
+
+MANFAAT:
+Mencegah kecurangan (fraud), memantau biaya bahan baku (COGS), dan notifikasi jika stok menipis.

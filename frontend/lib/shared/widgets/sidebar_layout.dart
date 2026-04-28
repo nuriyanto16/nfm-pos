@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/dio_client.dart';
 import '../../features/settings/presentation/providers/settings_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'floating_chatbot.dart';
 
 // ─── User Info & Menu Provider ─────────────────────────────────────────────────
 final authMeProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -32,6 +33,14 @@ IconData _getIconData(String? name) {
     case 'description': return Icons.description;
     case 'account_tree': return Icons.account_tree;
     case 'history_edu': return Icons.history_edu;
+    case 'warehouse': return Icons.warehouse;
+    case 'input': return Icons.input;
+    case 'output': return Icons.output;
+    case 'corporate_fare': return Icons.corporate_fare;
+    case 'insights': return Icons.insights;
+    case 'chat': return Icons.chat;
+    case 'history': return Icons.history;
+    case 'school': return Icons.school;
     default: return Icons.circle;
   }
 }
@@ -68,7 +77,7 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(body: Center(child: Text('Error loading menus: $e'))),
       data: (user) {
-        final menus = (user['role']?['menus'] as List? ?? []);
+        final menus = List<dynamic>.from(user['role']?['menus'] as List? ?? []);
         
         if (!isWide) {
           return _buildMobileLayout(context, location, sessionAsync, user, menus);
@@ -81,17 +90,22 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
   Widget _buildDesktopLayout(
       BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync, Map<String, dynamic> user, List<dynamic> menus) {
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          _DesktopSidebar(
-            location: location,
-            user: user,
-            menus: menus,
-            sessionAsync: sessionAsync,
-            onLogout: _logout,
-            onSessionAction: _handleSessionAction,
+          Row(
+            children: [
+              _DesktopSidebar(
+                location: location,
+                user: user,
+                menus: menus,
+                sessionAsync: sessionAsync,
+                onLogout: _logout,
+                onSessionAction: _handleSessionAction,
+              ),
+              Expanded(child: widget.child),
+            ],
           ),
-          Expanded(child: widget.child),
+          const FloatingChatbot(),
         ],
       ),
     );
@@ -117,7 +131,12 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
         onLogout: _logout,
         onSessionAction: _handleSessionAction,
       ),
-      body: widget.child,
+      body: Stack(
+        children: [
+          widget.child,
+          const FloatingChatbot(),
+        ],
+      ),
     );
   }
 
@@ -349,27 +368,38 @@ class _DesktopSidebar extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (logoUrl != null && logoUrl.toString().isNotEmpty)
+                    if (logoUrl != null && logoUrl.toString().isNotEmpty && logoUrl.toString() != '/')
                       Container(
-                        width: 60,
-                        height: 60,
-                        margin: const EdgeInsets.only(bottom: 12),
+                        width: 80,
+                        height: 80,
+                        margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 15,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
                           image: DecorationImage(
-                            image: NetworkImage('${dotenv.get('BASE_URL').split('/api')[0]}$logoUrl'),
+                            image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$logoUrl'),
                             fit: BoxFit.contain,
                           ),
                         ),
                       )
                     else
                       Container(
-                        padding: const EdgeInsets.all(8),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                        child: const Icon(Icons.restaurant, color: Colors.white, size: 32),
+                        width: 64,
+                        height: 64,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.restaurant, color: Colors.white, size: 40),
                       ),
                     const Text(
                       'NFM POS',
@@ -531,21 +561,28 @@ class _MobileDrawer extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (logoUrl != null && logoUrl.toString().isNotEmpty)
+                    if (logoUrl != null && logoUrl.toString().isNotEmpty && logoUrl.toString() != '/')
                       Container(
-                        width: 50,
-                        height: 50,
+                        width: 60,
+                        height: 60,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
                           image: DecorationImage(
-                            image: NetworkImage('${dotenv.get('BASE_URL').split('/api')[0]}$logoUrl'),
+                            image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$logoUrl'),
                             fit: BoxFit.contain,
                           ),
                         ),
                       )
                     else
-                      const Icon(Icons.restaurant, color: Colors.white, size: 36),
+                      const Icon(Icons.restaurant, color: Colors.white, size: 48),
                     const SizedBox(height: 8),
                     const Text('NFM POS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
                   ],

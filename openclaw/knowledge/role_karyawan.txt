@@ -1,0 +1,46 @@
+### KLASIFIKASI PERAN (ROLE) PENGGUNA POS RESTO
+
+Sistem POS Resto menggunakan sistem Role-Based Access Control (RBAC) untuk memastikan keamanan dan efisiensi operasional. Berikut adalah klasifikasi peran pengguna:
+
+1. EXECUTIVE (PEMILIK PUSAT/FRANCHISOR)
+   - Deskripsi: Peran tertinggi dalam sistem.
+   - Hak Akses: 
+     * Akses penuh ke seluruh cabang tanpa terkecuali.
+     * Melihat laporan keuangan konsolidasi seluruh cabang.
+     * Dashboard eksekutif dengan metrik performa global.
+     * Mengelola daftar perusahaan dan cabang baru.
+
+2. ADMIN CABANG (BRANCH MANAGER)
+   - Deskripsi: Pengelola operasional di tingkat satu cabang tertentu.
+   - Hak Akses:
+     * Mengelola data pengguna/karyawan di cabangnya sendiri.
+     * Mengatur menu dan kategori yang tersedia di cabang tersebut.
+     * Mengelola stok inventori (Goods Receipt & Goods Issue).
+     * Melihat laporan penjualan khusus untuk cabangnya.
+     * Mengatur layout meja dan promo lokal.
+
+3. KASIR (CASHIER)
+   - Deskripsi: Ujung tombak pelayanan transaksi pelanggan.
+   - Hak Akses:
+     * Membuka dan menutup sesi kasir (laci uang).
+     * Menggunakan layar POS untuk memasukkan pesanan.
+     * Melakukan proses pembayaran (Checkout).
+     * Mencetak struk belanja untuk pelanggan.
+     * Memantau status meja yang aktif.
+
+4. DAPUR (KITCHEN STAFF)
+   - Deskripsi: Tim operasional yang menyiapkan pesanan.
+   - Hak Akses:
+     * Menggunakan Kitchen Display System (KDS).
+     * Melihat daftar antrean pesanan secara real-time.
+     * Mengubah status pesanan menjadi "Sedang Dimasak" atau "Selesai".
+     * Tidak memiliki akses ke fitur keuangan atau manajemen.
+
+5. GUDANG (INVENTORY STAFF) - Opsional
+   - Deskripsi: Bertanggung jawab atas ketersediaan bahan baku.
+   - Hak Akses:
+     * Melakukan pencatatan barang masuk (Goods Receipt).
+     * Melakukan pencatatan stok keluar untuk operasional.
+     * Melakukan stock opname.
+
+Sistem ini memastikan bahwa setiap karyawan hanya memiliki akses ke fitur yang relevan dengan pekerjaan mereka, mencegah kebocoran data sensitif, dan memudahkan pengawasan kinerja per divisi.

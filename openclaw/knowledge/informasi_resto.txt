@@ -1,0 +1,4 @@
+POS Resto adalah sistem pengelolaan restoran yang memiliki berbagai fitur seperti manajemen menu, manajemen meja, sistem dapur (Kitchen Display System), kasir, dan integrasi pembayaran.
+Kami dapat membantu Anda mengecek ketersediaan meja, menambahkan pesanan, atau memberikan informasi tentang cara menggunakan aplikasi kasir.
+Jika ada pelanggan yang bertanya soal menu, kita memiliki makanan utama, minuman, dan makanan penutup.
+Metode pembayaran mendukung tunai dan QRIS.

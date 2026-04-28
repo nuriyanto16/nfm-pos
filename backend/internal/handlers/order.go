@@ -53,7 +53,7 @@ func GetOrders(c *gin.Context) {
 func GetOrderByID(c *gin.Context) {
 	id := c.Param("id")
 	var order models.Order
-	if err := database.DB.Preload("Table").Preload("User").Preload("Items.Menu").Preload("Customer").Preload("Promo").First(&order, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Table").Preload("User").Preload("Items.Menu").Preload("Customer").Preload("Promo").First(&order, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
@@ -68,6 +68,20 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	userId, _ := c.Get("userID")
+	valCompany, existsCompany := c.Get("companyID")
+	var finalCompanyID uint
+	if !existsCompany {
+		// Fallback: Get from user record
+		var user models.User
+		if err := database.DB.First(&user, userId).Error; err == nil {
+			finalCompanyID = user.CompanyID
+		}
+		if finalCompanyID == 0 {
+			finalCompanyID = 1 // Ultimate fallback
+		}
+	} else {
+		finalCompanyID = valCompany.(uint)
+	}
 
 	// Calculate totals
 	var total float64
@@ -129,6 +143,7 @@ func CreateOrder(c *gin.Context) {
 	tax := (total + serviceCharge) * taxPct
 
 	order := models.Order{
+		CompanyID:           finalCompanyID,
 		BranchID:            finalBranchID,
 		TableID:             req.TableID,
 		CustomerID:          req.CustomerID,
@@ -161,29 +176,35 @@ func CreateOrder(c *gin.Context) {
 		}
 	}
 
-	// Deduct ingredients
+	// Deduct ingredients (Optimized)
+	var menuIDs []uint
+	qtyMap := make(map[uint]int)
 	for _, item := range order.Items {
-		var recipe []models.MenuIngredient
-		if err := tx.Where("menu_id = ?", item.MenuID).Find(&recipe).Error; err == nil {
-			for _, ingredient := range recipe {
-				qtyToDeduct := ingredient.QtyUsed * float64(item.Quantity)
-				if err := tx.Model(&models.Ingredient{}).Where("id = ?", ingredient.IngredientID).
-					Update("stock", gorm.Expr("stock - ?", qtyToDeduct)).Error; err != nil {
-					tx.Rollback()
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ingredient stock"})
-					return
-				}
+		menuIDs = append(menuIDs, item.MenuID)
+		qtyMap[item.MenuID] += item.Quantity
+	}
 
-				// Log Stock History
-				tx.Create(&models.StockHistory{
-					BranchID:     order.BranchID,
-					IngredientID: ingredient.IngredientID,
-					OrderID:      &order.ID,
-					Type:         "OUT",
-					Quantity:     qtyToDeduct,
-					Notes:        "Order #" + strconv.FormatUint(uint64(order.ID), 10),
-				})
+	var allRecipes []models.MenuIngredient
+	if err := tx.Where("menu_id IN ?", menuIDs).Find(&allRecipes).Error; err == nil {
+		for _, ingredient := range allRecipes {
+			qtyToDeduct := ingredient.QtyUsed * float64(qtyMap[ingredient.MenuID])
+			if err := tx.Model(&models.Ingredient{}).Where("id = ?", ingredient.IngredientID).
+				Update("stock", gorm.Expr("stock - ?", qtyToDeduct)).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ingredient stock"})
+				return
 			}
+
+			// Log Stock History
+			tx.Create(&models.StockHistory{
+				CompanyID:    order.CompanyID,
+				BranchID:     order.BranchID,
+				IngredientID: ingredient.IngredientID,
+				OrderID:      &order.ID,
+				Type:         "OUT",
+				Quantity:     qtyToDeduct,
+				Notes:        "Order #" + strconv.FormatUint(uint64(order.ID), 10),
+			})
 		}
 	}
 
@@ -202,7 +223,7 @@ func UpdateOrderStatus(c *gin.Context) {
 	}
 
 	var order models.Order
-	if err := database.DB.First(&order, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&order, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
@@ -225,30 +246,66 @@ func ProcessPayment(c *gin.Context) {
 	orderID := c.Param("id")
 	var payment models.Payment
 	if err := c.ShouldBindJSON(&payment); err != nil {
+		fmt.Printf("❌ Payment Bind Error: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	fmt.Printf("💳 Processing payment for Order #%s, Method: %s, Amount: %f\n", orderID, payment.PaymentMethod, payment.AmountPaid)
 
 	var order models.Order
-	if err := database.DB.Preload("Items").First(&order, orderID).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Items").First(&order, orderID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
 
 	payment.OrderID = order.ID
-	payment.BranchID = order.BranchID // Ensure payment is linked to the same branch as the order
+	
+	// Fallback for legacy orders missing company/branch IDs
+	if order.CompanyID == 0 {
+		if val, exists := c.Get("companyID"); exists {
+			order.CompanyID = val.(uint)
+		} else {
+			order.CompanyID = 1 // Default
+		}
+	}
+	if order.BranchID == 0 {
+		if val, exists := c.Get("branchID"); exists {
+			order.BranchID = val.(uint)
+		} else {
+			// Fallback to first branch
+			var firstBranch models.Branch
+			database.DB.First(&firstBranch)
+			order.BranchID = firstBranch.ID
+		}
+	}
+
+	payment.CompanyID = order.CompanyID
+	payment.BranchID = order.BranchID
+
+	// Check if payment already exists for this order
+	var existingPayment models.Payment
+	if err := database.DB.Where("order_id = ?", order.ID).First(&existingPayment).Error; err == nil {
+		fmt.Printf("ℹ️  Payment already exists for Order #%d. Returning existing record.\n", order.ID)
+		c.JSON(http.StatusOK, existingPayment)
+		return
+	}
 
 	tx := database.DB.Begin()
 	if err := tx.Create(&payment).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Payment failed"})
+		fmt.Printf("❌ DB Error (Create Payment): %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Payment failed: " + err.Error()})
 		return
 	}
 
 	// Update order status and paid flag
-	updateData := map[string]interface{}{"is_paid": true, "status": "Selesai"}
+	updateData := map[string]interface{}{"is_paid": true}
+	if order.Status == "Siap" {
+		updateData["status"] = "Selesai"
+	}
 	if err := tx.Model(&order).Updates(updateData).Error; err != nil {
 		tx.Rollback()
+		fmt.Printf("❌ DB Error (Update Order): %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
 		return
 	}
@@ -307,7 +364,7 @@ func VoidOrder(c *gin.Context) {
 	}
 
 	var order models.Order
-	if err := database.DB.Preload("Items").First(&order, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Items").First(&order, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
@@ -340,6 +397,7 @@ func VoidOrder(c *gin.Context) {
 
 				// Log Stock History
 				tx.Create(&models.StockHistory{
+					CompanyID:    order.CompanyID,
 					BranchID:     order.BranchID,
 					IngredientID: ingredient.IngredientID,
 					OrderID:      &order.ID,
@@ -403,6 +461,7 @@ func PostJournalEntryForPayment(order models.Order, payment models.Payment) {
 	getAccount("acc_inventory_id", "1201", &inventoryAccount)
 
 	entry := models.JournalEntry{
+		CompanyID:   order.CompanyID,
 		BranchID:    order.BranchID,
 		Date:        time.Now(),
 		Description: "Penjualan Order #" + strconv.FormatUint(uint64(order.ID), 10),
@@ -439,16 +498,21 @@ func PostJournalEntryForPayment(order models.Order, payment models.Payment) {
 		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: serviceAccount.ID, Credit: order.ServiceChargeAmount})
 	}
 
-	// --- HPP Posting ---
+	// --- HPP Posting Optimized ---
 	var totalHPP float64
+	var menuIDs []uint
+	qtyMap := make(map[uint]int)
 	for _, item := range order.Items {
-		var recipe []models.MenuIngredient
-		if err := database.DB.Preload("Ingredient").Where("menu_id = ?", item.MenuID).Find(&recipe).Error; err == nil {
-			for _, ing := range recipe {
-				if ing.IngredientID != 0 {
-					totalHPP += ing.QtyUsed * float64(item.Quantity) * ing.Ingredient.CostPerUnit
-				}
-			}
+		menuIDs = append(menuIDs, item.MenuID)
+		qtyMap[item.MenuID] += item.Quantity
+	}
+
+	var allRecipes []models.MenuIngredient
+	database.DB.Preload("Ingredient").Where("menu_id IN ?", menuIDs).Find(&allRecipes)
+	
+	for _, ing := range allRecipes {
+		if ing.IngredientID != 0 && ing.Ingredient.ID != 0 {
+			totalHPP += ing.QtyUsed * float64(qtyMap[ing.MenuID]) * ing.Ingredient.CostPerUnit
 		}
 	}
 
@@ -496,6 +560,7 @@ func PostJournalEntryForVoid(order models.Order) {
 	getAccount("acc_service_id", "4102", &serviceAccount)
 
 	entry := models.JournalEntry{
+		CompanyID:   order.CompanyID,
 		BranchID:    order.BranchID,
 		Date:        time.Now(),
 		Description: "Reversal Order #" + strconv.FormatUint(uint64(order.ID), 10) + " (VOID)",
@@ -531,20 +596,25 @@ func PostJournalEntryForVoid(order models.Order) {
 		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: serviceAccount.ID, Debit: order.ServiceChargeAmount})
 	}
 
-	// --- HPP Reversal Posting ---
+	// --- HPP Reversal Posting Optimized ---
 	var totalHPP float64
 	var hppAccount, inventoryAccount models.Account
 	getAccount("acc_hpp_id", "5101", &hppAccount)
 	getAccount("acc_inventory_id", "1201", &inventoryAccount)
 
+	var menuIDs []uint
+	qtyMap := make(map[uint]int)
 	for _, item := range order.Items {
-		var recipe []models.MenuIngredient
-		if err := database.DB.Preload("Ingredient").Where("menu_id = ?", item.MenuID).Find(&recipe).Error; err == nil {
-			for _, ing := range recipe {
-				if ing.IngredientID != 0 {
-					totalHPP += ing.QtyUsed * float64(item.Quantity) * ing.Ingredient.CostPerUnit
-				}
-			}
+		menuIDs = append(menuIDs, item.MenuID)
+		qtyMap[item.MenuID] += item.Quantity
+	}
+
+	var allRecipes []models.MenuIngredient
+	database.DB.Preload("Ingredient").Where("menu_id IN ?", menuIDs).Find(&allRecipes)
+	
+	for _, ing := range allRecipes {
+		if ing.IngredientID != 0 && ing.Ingredient.ID != 0 {
+			totalHPP += ing.QtyUsed * float64(qtyMap[ing.MenuID]) * ing.Ingredient.CostPerUnit
 		}
 	}
 

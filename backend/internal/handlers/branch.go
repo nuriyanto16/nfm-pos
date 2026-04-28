@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"pos-resto/backend/database"
+	"pos-resto/backend/internal/middleware"
 	"pos-resto/backend/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +11,7 @@ import (
 
 func GetBranches(c *gin.Context) {
 	var branches []models.Branch
-	query := database.DB.Model(&models.Branch{})
+	query := database.DB.Model(&models.Branch{}).Scopes(middleware.GetQueryScope(c))
 
 	// Basic filter
 	isActive := c.Query("active")
@@ -29,7 +30,7 @@ func GetBranches(c *gin.Context) {
 func GetBranchByID(c *gin.Context) {
 	id := c.Param("id")
 	var branch models.Branch
-	if err := database.DB.First(&branch, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&branch, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Branch not found"})
 		return
 	}
@@ -53,7 +54,7 @@ func CreateBranch(c *gin.Context) {
 func UpdateBranch(c *gin.Context) {
 	id := c.Param("id")
 	var branch models.Branch
-	if err := database.DB.First(&branch, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&branch, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Branch not found"})
 		return
 	}
@@ -72,7 +73,7 @@ func UpdateBranch(c *gin.Context) {
 
 func DeleteBranch(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Delete(&models.Branch{}, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Delete(&models.Branch{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete branch"})
 		return
 	}

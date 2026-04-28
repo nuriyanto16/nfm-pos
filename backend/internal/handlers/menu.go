@@ -13,6 +13,7 @@ import (
 	"image"
 	"image/jpeg"
 	_ "image/png" // Register PNG decoder
+	"path/filepath"
 )
 
 func GetMenus(c *gin.Context) {
@@ -38,7 +39,7 @@ func GetMenus(c *gin.Context) {
 func GetMenuByID(c *gin.Context) {
 	id := c.Param("id")
 	var menu models.Menu
-	if err := database.DB.Preload("Category").First(&menu, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Category").First(&menu, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Menu not found"})
 		return
 	}
@@ -51,18 +52,23 @@ func CreateMenu(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Automatically set CompanyID from context
+	if companyID, exists := c.Get("companyID"); exists {
+		menu.CompanyID = companyID.(uint)
+	}
+	
 	if err := database.DB.Create(&menu).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create menu"})
 		return
 	}
-	database.DB.Preload("Category").First(&menu, menu.ID)
+	database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Category").First(&menu, menu.ID)
 	c.JSON(http.StatusCreated, menu)
 }
 
 func UpdateMenu(c *gin.Context) {
 	id := c.Param("id")
 	var menu models.Menu
-	if err := database.DB.First(&menu, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&menu, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Menu not found"})
 		return
 	}
@@ -77,13 +83,13 @@ func UpdateMenu(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update menu"})
 		return
 	}
-	database.DB.Preload("Category").First(&req, req.ID)
+	database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Category").First(&req, req.ID)
 	c.JSON(http.StatusOK, req)
 }
 
 func DeleteMenu(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Delete(&models.Menu{}, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Delete(&models.Menu{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete menu"})
 		return
 	}
@@ -111,6 +117,11 @@ func CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Automatically set CompanyID from context
+	if companyID, exists := c.Get("companyID"); exists {
+		cat.CompanyID = companyID.(uint)
+	}
+
 	if err := database.DB.Create(&cat).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category"})
 		return
@@ -121,7 +132,7 @@ func CreateCategory(c *gin.Context) {
 func UpdateCategory(c *gin.Context) {
 	id := c.Param("id")
 	var cat models.Category
-	if err := database.DB.First(&cat, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&cat, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return
 	}
@@ -140,7 +151,7 @@ func UpdateCategory(c *gin.Context) {
 
 func DeleteCategory(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Delete(&models.Category{}, id).Error; err != nil {
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Delete(&models.Category{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category"})
 		return
 	}
@@ -148,7 +159,7 @@ func DeleteCategory(c *gin.Context) {
 }
 
 func UploadMenuImage(c *gin.Context) {
-	handleImageUpload(c, "uploads")
+	handleImageUpload(c, "uploads/menu")
 }
 
 func UploadLogo(c *gin.Context) {
@@ -167,8 +178,12 @@ func handleImageUpload(c *gin.Context, folder string) {
 		os.MkdirAll(folder, 0755)
 	}
 
-	filename := uuid.New().String() + ".jpg" // Force JPEG for better compression
-	filepath := folder + "/" + filename
+	ext := filepath.Ext(file.Filename)
+	if ext == "" {
+		ext = ".jpg"
+	}
+	filename := uuid.New().String() + ext
+	filePath := filepath.Join(folder, filename)
 
 	// Open the uploaded file
 	src, err := file.Open()
@@ -178,24 +193,25 @@ func handleImageUpload(c *gin.Context, folder string) {
 	}
 	defer src.Close()
 
-	// Decode the image
+	// Decode the image to normalize/compress if it's an image
 	img, _, err := image.Decode(src)
 	if err != nil {
-		// Fallback to direct save if decoding fails (maybe not an image)
-		if err := c.SaveUploadedFile(file, filepath); err != nil {
+		// Fallback to direct save if decoding fails
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 			return
 		}
 	} else {
 		// Create the destination file
-		out, err := os.Create(filepath)
+		// If it's a large image, we might want to re-encode it as JPEG
+		out, err := os.Create(filePath)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create destination file"})
 			return
 		}
 		defer out.Close()
 
-		// Save with JPEG compression (quality 60-70 is usually good enough for web)
+		// Save with JPEG compression
 		err = jpeg.Encode(out, img, &jpeg.Options{Quality: 70})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to compress image"})
@@ -203,5 +219,7 @@ func handleImageUpload(c *gin.Context, folder string) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"url": "/" + folder + "/" + filename})
+	// Return web-friendly path (always use forward slash)
+	urlPath := "/" + filepath.ToSlash(filePath)
+	c.JSON(http.StatusOK, gin.H{"url": urlPath})
 }

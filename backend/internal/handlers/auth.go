@@ -45,6 +45,7 @@ func Login(c *gin.Context) {
 				Username:     "admin",
 				PasswordHash: string(hash),
 				RoleID:       1, // Assuming 1 is Admin from init.sql
+				CompanyID:    1, // Default to first company
 			}
 			database.DB.Create(&user)
 			database.DB.Preload("Role").First(&user, user.ID)
@@ -66,10 +67,11 @@ func Login(c *gin.Context) {
 
 	// Generate JWT
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":   user.ID,
-		"role":      user.Role.Name,
-		"branch_id": user.BranchID,
-		"exp":       time.Now().Add(time.Hour * 72).Unix(),
+		"user_id":    user.ID,
+		"role":       user.Role.Name,
+		"branch_id":  user.BranchID,
+		"company_id": user.CompanyID,
+		"exp":        time.Now().Add(time.Hour * 72).Unix(),
 	})
 
 	secret := os.Getenv("JWT_SECRET")

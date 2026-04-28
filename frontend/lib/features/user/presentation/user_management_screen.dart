@@ -158,6 +158,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       final newStatus = !(user['is_active'] == true);
       await dio.put('users/${user['id']}', data: {'is_active': newStatus});
       ref.invalidate(userListProvider);
+      ref.invalidate(authMeProvider);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
@@ -194,6 +195,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
         user: user,
         onSaved: () {
           ref.invalidate(userListProvider);
+          ref.invalidate(authMeProvider);
           Navigator.pop(ctx);
         },
       ),

@@ -73,6 +73,12 @@ func CreateUser(c *gin.Context) {
 		IsActive:     true,
 	}
 
+	if companyID, exists := c.Get("companyID"); exists {
+		user.CompanyID = companyID.(uint)
+	} else {
+		user.CompanyID = 1 // Fallback
+	}
+
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user, username may already exist"})
 		return

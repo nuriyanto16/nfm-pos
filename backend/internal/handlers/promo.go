@@ -43,6 +43,9 @@ func CreatePromo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if companyID, exists := c.Get("companyID"); exists {
+		promo.CompanyID = companyID.(uint)
+	}
 	if err := database.DB.Create(&promo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create promo"})
 		return

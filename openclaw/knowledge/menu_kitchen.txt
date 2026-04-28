@@ -1,0 +1,15 @@
+=== PANDUAN MENU: KITCHEN DISPLAY SYSTEM (KDS) ===
+
+ALUR KERJA:
+Monitor Pesanan Masuk -> Proses Masak -> Selesai/Siap Saji.
+
+CARA INPUT/PENGOPERASIAN:
+1. Buka menu 'Kitchen Display' di tablet/layar area dapur.
+2. Daftar pesanan yang baru disimpan dari POS akan muncul secara real-time.
+3. Gunakan kolom 'Pending' untuk melihat daftar tunggu.
+4. Klik tombol 'Proses' pada pesanan yang mulai dikerjakan. Timer akan berjalan untuk memantau durasi masak.
+5. Klik tombol 'Siap' atau 'Finish' jika masakan sudah selesai.
+6. Pesanan akan berpindah ke status 'Siap' untuk diambil oleh pramusaji.
+
+MANFAAT:
+Menghilangkan penggunaan kertas (paperless), memantau kecepatan koki, dan memastikan tidak ada pesanan yang terlewat.
