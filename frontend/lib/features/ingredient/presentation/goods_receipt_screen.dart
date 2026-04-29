@@ -495,14 +495,9 @@ class _AddReceiptDialogState extends ConsumerState<_AddReceiptDialog> {
                         items: list.map<DropdownMenuItem<int>>((b) => DropdownMenuItem(value: b['id'], child: Text(b['name'] ?? '-'))).toList(),
                         onChanged: (v) => setState(() {
                           _selectedBranchId = v;
-                          // Reset order selection if branch changes and order doesn't match
-                          if (_selectedOrderId != null) {
-                            final order = _approvedOrders.firstWhere((o) => o['id'] == _selectedOrderId, orElse: () => null);
-                            if (order != null && order['branch_id'] != v) {
-                              _selectedOrderId = null;
-                              _items.clear();
-                            }
-                          }
+                          _selectedOrderId = null;
+                          _items.clear();
+                          _fetchApprovedOrders(); // Re-fetch orders for the selected branch (or full list if admin)
                         }),
                       ),
                       loading: () => const LinearProgressIndicator(),

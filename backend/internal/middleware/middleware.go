@@ -67,7 +67,7 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 		}
 
 		// Executive and Admin can see everything within company (all branches)
-		if role == "Executive" || role == "Admin" {
+		if strings.EqualFold(role, "Executive") || strings.EqualFold(role, "Admin") {
 			return tx
 		}
 
