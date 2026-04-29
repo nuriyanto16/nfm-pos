@@ -21,6 +21,8 @@ import 'features/table/presentation/table_management_screen.dart';
 import 'features/table/presentation/table_monitoring_screen.dart';
 import 'features/table/presentation/table_layout_screen.dart';
 import 'features/report/presentation/financial_report_screen.dart';
+import 'features/report/presentation/sales_report_screen.dart';
+
 import 'features/report/presentation/ingredient_report_screen.dart';
 import 'features/finance/presentation/coa_management_screen.dart';
 import 'features/finance/presentation/journal_list_screen.dart';
