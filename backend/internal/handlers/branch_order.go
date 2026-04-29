@@ -17,7 +17,7 @@ func GetBranchOrders(c *gin.Context) {
 
 	// Optional filters
 	if status := c.Query("status"); status != "" {
-		db = db.Where("status = ?", status)
+		db = db.Where("branch_orders.status = ?", status)
 	}
 
 	if branchID := c.Query("branch_id"); branchID != "" {
@@ -29,7 +29,7 @@ func GetBranchOrders(c *gin.Context) {
 			Where("goods_receipts.id IS NULL")
 	}
 
-	pagination, err := Paginate(c, db.Order("created_at desc"), &orders)
+	pagination, err := Paginate(c, db.Order("branch_orders.created_at desc"), &orders)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch branch orders"})
 		return
