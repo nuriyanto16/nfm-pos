@@ -21,7 +21,7 @@ func GetBranchOrders(c *gin.Context) {
 	}
 
 	if branchID := c.Query("branch_id"); branchID != "" {
-		db = db.Where("branch_id = ?", branchID)
+		db = db.Where("branch_orders.branch_id = ?", branchID)
 	}
 
 	if excludeUsed := c.Query("exclude_used"); excludeUsed == "true" {
