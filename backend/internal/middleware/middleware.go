@@ -66,8 +66,8 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 			tx = tx.Where("company_id = ?", companyID)
 		}
 
-		// Executive can see everything within company (all branches)
-		if role == "Executive" {
+		// Executive and Admin can see everything within company (all branches)
+		if role == "Executive" || role == "Admin" {
 			return tx
 		}
 
