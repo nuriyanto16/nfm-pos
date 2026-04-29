@@ -20,6 +20,10 @@ func GetBranchOrders(c *gin.Context) {
 		db = db.Where("status = ?", status)
 	}
 
+	if branchID := c.Query("branch_id"); branchID != "" {
+		db = db.Where("branch_id = ?", branchID)
+	}
+
 	if excludeUsed := c.Query("exclude_used"); excludeUsed == "true" {
 		db = db.Joins("LEFT JOIN goods_receipts ON goods_receipts.branch_order_id = branch_orders.id AND goods_receipts.status != 'Cancelled'").
 			Where("goods_receipts.id IS NULL")

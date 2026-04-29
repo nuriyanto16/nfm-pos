@@ -418,11 +418,18 @@ class _AddReceiptDialogState extends ConsumerState<_AddReceiptDialog> {
   Future<void> _fetchApprovedOrders() async {
     try {
       final dio = ref.read(dioProvider);
-      final res = await dio.get('inventory/branch-orders', queryParameters: {
+      final Map<String, dynamic> params = {
         'status': 'Approved',
         'exclude_used': 'true',
         'limit': 100,
-      });
+      };
+      
+      // If a branch is selected, filter by that branch on the server side
+      if (_selectedBranchId != null) {
+        params['branch_id'] = _selectedBranchId;
+      }
+
+      final res = await dio.get('inventory/branch-orders', queryParameters: params);
       setState(() => _approvedOrders = res.data['rows'] ?? []);
     } catch (e) {
       debugPrint('Error fetching approved orders: $e');
