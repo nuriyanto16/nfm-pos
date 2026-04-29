@@ -242,6 +242,52 @@ func UpdateOrderStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Status updated successfully"})
 }
 
+func UpdateOrderItemReady(c *gin.Context) {
+	itemId := c.Param("itemId")
+	var req struct {
+		IsReady bool `json:"is_ready"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var item models.OrderItem
+	if err := database.DB.First(&item, itemId).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Item not found"})
+		return
+	}
+
+	if err := database.DB.Model(&item).Update("is_ready", req.IsReady).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update item status"})
+		return
+	}
+
+	// Optional: Auto-update order status
+	// If at least one item is ready, order should be 'Proses' (if it was 'Pending')
+	var order models.Order
+	if err := database.DB.Preload("Items").First(&order, item.OrderID).Error; err == nil {
+		if order.Status == "Pending" && req.IsReady {
+			database.DB.Model(&order).Update("status", "Proses")
+		}
+
+		// If ALL items are ready, set order status to 'Siap'
+		allReady := true
+		for _, it := range order.Items {
+			if !it.IsReady {
+				allReady = false
+				break
+			}
+		}
+		if allReady && order.Status != "Siap" {
+			database.DB.Model(&order).Update("status", "Siap")
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Item status updated", "is_ready": req.IsReady})
+}
+
 func ProcessPayment(c *gin.Context) {
 	orderID := c.Param("id")
 	var payment models.Payment
@@ -486,16 +532,16 @@ func PostJournalEntryForPayment(order models.Order, payment models.Payment) {
 	}
 
 	// Debit Cash
-	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: bankAccount.ID, Debit: order.TotalAmount})
+	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: bankAccount.ID, Debit: order.TotalAmount, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	// Credit Sales
-	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: salesAccount.ID, Credit: subtotalItems})
+	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: salesAccount.ID, Credit: subtotalItems, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	// Credit Tax
 	if order.TaxAmount > 0 && taxAccount.ID != 0 {
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: taxAccount.ID, Credit: order.TaxAmount})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: taxAccount.ID, Credit: order.TaxAmount, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	}
 	// Credit Service
 	if order.ServiceChargeAmount > 0 && serviceAccount.ID != 0 {
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: serviceAccount.ID, Credit: order.ServiceChargeAmount})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: serviceAccount.ID, Credit: order.ServiceChargeAmount, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	}
 
 	// --- HPP Posting Optimized ---
@@ -518,9 +564,9 @@ func PostJournalEntryForPayment(order models.Order, payment models.Payment) {
 
 	if totalHPP > 0 && hppAccount.ID != 0 && inventoryAccount.ID != 0 {
 		// Debit HPP
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: hppAccount.ID, Debit: totalHPP})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: hppAccount.ID, Debit: totalHPP, CompanyID: order.CompanyID, BranchID: order.BranchID})
 		// Credit Inventory
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: inventoryAccount.ID, Credit: totalHPP})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: inventoryAccount.ID, Credit: totalHPP, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	}
 
 	tx.Commit()
@@ -584,16 +630,16 @@ func PostJournalEntryForVoid(order models.Order) {
 	}
 
 	// Credit Cash (Reversal)
-	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: bankAccount.ID, Credit: order.TotalAmount})
+	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: bankAccount.ID, Credit: order.TotalAmount, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	// Debit Sales (Reversal)
-	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: salesAccount.ID, Debit: subtotalItems})
+	tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: salesAccount.ID, Debit: subtotalItems, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	// Debit Tax (Reversal)
 	if order.TaxAmount > 0 && taxAccount.ID != 0 {
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: taxAccount.ID, Debit: order.TaxAmount})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: taxAccount.ID, Debit: order.TaxAmount, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	}
 	// Debit Service (Reversal)
 	if order.ServiceChargeAmount > 0 && serviceAccount.ID != 0 {
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: serviceAccount.ID, Debit: order.ServiceChargeAmount})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: serviceAccount.ID, Debit: order.ServiceChargeAmount, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	}
 
 	// --- HPP Reversal Posting Optimized ---
@@ -620,9 +666,9 @@ func PostJournalEntryForVoid(order models.Order) {
 
 	if totalHPP > 0 && hppAccount.ID != 0 && inventoryAccount.ID != 0 {
 		// Debit Inventory (Reversal)
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: inventoryAccount.ID, Debit: totalHPP})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: inventoryAccount.ID, Debit: totalHPP, CompanyID: order.CompanyID, BranchID: order.BranchID})
 		// Credit HPP (Reversal)
-		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: hppAccount.ID, Credit: totalHPP})
+		tx.Create(&models.JournalItem{JournalID: entry.ID, AccountID: hppAccount.ID, Credit: totalHPP, CompanyID: order.CompanyID, BranchID: order.BranchID})
 	}
 
 	tx.Commit()

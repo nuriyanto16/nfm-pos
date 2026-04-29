@@ -54,18 +54,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     try {
-      final res = await ref.read(dioProvider).get('settings');
-      final data = res.data as Map<String, dynamic>;
-      _taxController.text = data['tax_pct'] ?? '10';
-      _serviceController.text = data['service_charge_pct'] ?? '0';
-      _waSenderController.text = data['wa_sender_number'] ?? '';
-      _accSalesId = data['acc_sales_id'];
-      _accCashId = data['acc_cash_id'];
-      _accTaxId = data['acc_tax_id'];
-      _accServiceId = data['acc_service_id'];
-      _accHppId = data['acc_hpp_id'];
-      _accInventoryId = data['acc_inventory_id'];
-      _logoUrl = data['logo_url'];
+      final data = await ref.read(settingsProvider.future);
+      setState(() {
+        _taxController.text = (data['tax_pct'] ?? '10').toString();
+        _serviceController.text = (data['service_charge_pct'] ?? '0').toString();
+        _waSenderController.text = (data['wa_sender_number'] ?? '').toString();
+        _accSalesId = data['acc_sales_id']?.toString();
+        _accCashId = data['acc_cash_id']?.toString();
+        _accTaxId = data['acc_tax_id']?.toString();
+        _accServiceId = data['acc_service_id']?.toString();
+        _accHppId = data['acc_hpp_id']?.toString();
+        _accInventoryId = data['acc_inventory_id']?.toString();
+        _logoUrl = data['logo_url']?.toString();
+      });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat pengaturan: $e')));
     }

@@ -35,7 +35,8 @@ func GetDashboardStats(c *gin.Context) {
 
 	// Recent Orders (Last 5)
 	var recentOrders []models.Order
-	database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).Preload("Table").Preload("User").Preload("Customer").
+	database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
+		Preload("Table").Preload("User").Preload("Customer").Preload("Branch").
 		Order("created_at desc").Limit(5).Find(&recentOrders)
 
 	// Low Stock Ingredients (Stock <= 10)

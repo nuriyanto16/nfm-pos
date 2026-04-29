@@ -61,9 +61,32 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 	companyID, companyExists := c.Get("companyID")
 
 	return func(tx *gorm.DB) *gorm.DB {
+		// Try to determine the table name from the statement's model or schema
+		tableName := ""
+		if tx.Statement != nil {
+			if tx.Statement.Table != "" {
+				tableName = tx.Statement.Table
+			} else if tx.Statement.Schema != nil {
+				tableName = tx.Statement.Schema.Table
+			} else if tx.Statement.Model != nil {
+				if err := tx.Statement.Parse(tx.Statement.Model); err == nil && tx.Statement.Schema != nil {
+					tableName = tx.Statement.Schema.Table
+				}
+			} else if tx.Statement.Dest != nil {
+				// Try to parse from destination if model is not set
+				if err := tx.Statement.Parse(tx.Statement.Dest); err == nil && tx.Statement.Schema != nil {
+					tableName = tx.Statement.Schema.Table
+				}
+			}
+		}
+
 		// Filter by company first (multi-tenancy)
 		if companyExists && companyID != nil {
-			tx = tx.Where("company_id = ?", companyID)
+			if tableName != "" {
+				tx = tx.Where(fmt.Sprintf("%s.company_id = ?", tableName), companyID)
+			} else {
+				tx = tx.Where("company_id = ?", companyID)
+			}
 		}
 
 		// Executive and Admin can see everything within company (all branches)
@@ -73,6 +96,9 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 
 		// Others are scoped to their branch, allowing NULL branch_id (global items)
 		if branchExists && branchID != nil {
+			if tableName != "" {
+				return tx.Where(fmt.Sprintf("(%s.branch_id = ? OR %s.branch_id IS NULL)", tableName, tableName), branchID)
+			}
 			return tx.Where("(branch_id = ? OR branch_id IS NULL)", branchID)
 		}
 

@@ -121,7 +121,8 @@ func GetGeneralLedger(c *gin.Context) {
 	}
 
 	var journalItems []models.JournalItem
-	db := database.DB.Scopes(middleware.GetQueryScope(c)).Preload("Account").Preload("Journal").
+	db := database.DB.Model(&models.JournalItem{}).Scopes(middleware.GetQueryScope(c)).
+		Preload("Account").Preload("Journal").
 		Joins("JOIN journal_entries ON journal_entries.id = journal_items.journal_id").
 		Where("journal_items.account_id = ?", accountID)
 

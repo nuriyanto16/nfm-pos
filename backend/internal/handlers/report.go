@@ -52,7 +52,7 @@ func GetFinancialReport(c *gin.Context) {
 	var report SalesReport
 
 	// 1. Total Revenue & Orders
-	db := database.DB.Scopes(middleware.GetQueryScope(c)).Model(&models.Order{}).
+	db := database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
 		Where("status = 'Selesai' AND created_at BETWEEN ? AND ?", startDate, endDate)
 
 	db.Count(&report.TotalOrders)
@@ -177,4 +177,70 @@ func GetIngredientConsumptionReport(c *gin.Context) {
 		Scan(&consumption)
 
 	c.JSON(http.StatusOK, consumption)
+}
+
+type DetailedSalesReportRow struct {
+	ID             uint      `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	CustomerName   string    `json:"customer_name"`
+	TotalAmount    float64   `json:"total_amount"`
+	TaxAmount      float64   `json:"tax_amount"`
+	ServiceCharge  float64   `json:"service_charge"`
+	DiscountAmount float64   `json:"discount_amount"`
+	PaymentMethod  string    `json:"payment_method"`
+	OrderSource    string    `json:"order_source"`
+	DeliveryMethod string    `json:"delivery_method"`
+	Status         string    `json:"status"`
+	BranchName     string    `json:"branch_name"`
+}
+
+func GetDetailedSalesReport(c *gin.Context) {
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	branchID := c.Query("branch_id")
+	paymentMethod := c.Query("payment_method")
+	orderSource := c.Query("order_source")
+	deliveryMethod := c.Query("delivery_method")
+
+	var startDate, endDate time.Time
+	if startDateStr != "" {
+		startDate, _ = time.Parse("2006-01-02", startDateStr)
+	} else {
+		startDate = time.Now().AddDate(0, 0, -30)
+	}
+
+	if endDateStr != "" {
+		endDate, _ = time.Parse("2006-01-02", endDateStr)
+		endDate = endDate.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+	} else {
+		endDate = time.Now()
+	}
+
+	var rows []DetailedSalesReportRow
+	db := database.DB.Table("orders").
+		Select("orders.id, orders.created_at, orders.customer_name, orders.total_amount, orders.tax_amount, orders.service_charge_amount as service_charge, orders.discount_amount, payments.payment_method, orders.order_source, orders.delivery_method, orders.status, branches.name as branch_name").
+		Joins("left join payments on payments.order_id = orders.id").
+		Joins("left join branches on branches.id = orders.branch_id").
+		Scopes(middleware.GetQueryScope(c)).
+		Where("orders.created_at BETWEEN ? AND ?", startDate, endDate)
+
+	if branchID != "" {
+		db = db.Where("orders.branch_id = ?", branchID)
+	}
+	if paymentMethod != "" {
+		db = db.Where("payments.payment_method = ?", paymentMethod)
+	}
+	if orderSource != "" {
+		db = db.Where("orders.order_source = ?", orderSource)
+	}
+	if deliveryMethod != "" {
+		db = db.Where("orders.delivery_method = ?", deliveryMethod)
+	}
+
+	if err := db.Order("orders.created_at DESC").Scan(&rows).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch report data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, rows)
 }

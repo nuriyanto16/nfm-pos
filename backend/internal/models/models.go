@@ -210,6 +210,8 @@ type Order struct {
 	Items          []OrderItem `gorm:"foreignKey:OrderID" json:"items"`
 	ServiceChargeAmount float64 `gorm:"default:0" json:"service_charge_amount"`
 	VoidReason     string      `json:"void_reason"`
+	OrderSource    string      `gorm:"type:varchar(50);default:'Resto'" json:"order_source"`
+	DeliveryMethod string      `gorm:"type:varchar(50);default:'Dine In'" json:"delivery_method"`
 }
 
 type OrderItem struct {
@@ -221,6 +223,7 @@ type OrderItem struct {
 	Price    float64 `gorm:"not null" json:"price"`
 	Subtotal float64 `gorm:"not null" json:"subtotal"`
 	Notes    string  `json:"notes"`
+	IsReady  bool    `gorm:"default:false" json:"is_ready"`
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
@@ -296,6 +299,8 @@ type JournalEntry struct {
 
 type JournalItem struct {
 	ID        uint         `gorm:"primaryKey" json:"id"`
+	CompanyID uint         `json:"company_id"`
+	BranchID  uint         `json:"branch_id"`
 	JournalID uint         `gorm:"not null" json:"journal_id"`
 	Journal   JournalEntry `gorm:"foreignKey:JournalID" json:"journal"`
 	AccountID uint         `gorm:"not null" json:"account_id"`

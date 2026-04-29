@@ -26,23 +26,26 @@ func GetCashierSessions(c *gin.Context) {
 
 func GetActiveCashierSession(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	var session models.CashierSession
-	err := database.DB.Preload("User").Where("user_id = ? AND status = 'Open'", userID).First(&session).Error
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"session": nil})
+	var sessions []models.CashierSession
+	database.DB.Preload("User").Where("user_id = ? AND status = 'Open'", userID).Limit(1).Find(&sessions)
+	
+	if len(sessions) == 0 {
+		c.JSON(http.StatusOK, gin.H{"session": nil}) // Changed from 404 to 200 with nil
 		return
 	}
-	c.JSON(http.StatusOK, session)
+	c.JSON(http.StatusOK, sessions[0])
 }
 
 func GetActiveCashierSessionSummary(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	var session models.CashierSession
-	err := database.DB.Where("user_id = ? AND status = 'Open'", userID).First(&session).Error
-	if err != nil {
+	var sessions []models.CashierSession
+	database.DB.Where("user_id = ? AND status = 'Open'", userID).Limit(1).Find(&sessions)
+	
+	if len(sessions) == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "No open session"})
 		return
 	}
+	session := sessions[0]
 
 	var totalSales float64
 	var totalCashSales float64

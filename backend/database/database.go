@@ -74,6 +74,10 @@ func ConnectDB() {
 	// Update orders status check constraint to include 'Siap'
 	DB.Exec(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;`)
 	DB.Exec(`ALTER TABLE orders ADD CONSTRAINT orders_status_check CHECK (status IN ('Pending', 'Proses', 'Siap', 'Selesai', 'Batal'));`)
+
+	// Data fix for existing journal items (backfill company/branch from parent)
+	DB.Exec(`UPDATE journal_items SET company_id = journal_entries.company_id, branch_id = journal_entries.branch_id 
+			 FROM journal_entries WHERE journal_items.journal_id = journal_entries.id AND (journal_items.company_id = 0 OR journal_items.company_id IS NULL);`)
 }
 
 func SeedSidebarMenus() {
@@ -121,6 +125,7 @@ func SeedSidebarMenus() {
 		{Title: "Monitoring Meja", Path: "/monitoring-tables", Icon: "monitor", SortOrder: 26},
 		{Title: "Denah Meja", Path: "/layout-tables", Icon: "map", SortOrder: 27},
 		{Title: "Pesanan Cabang", Path: "/inventory/branch-orders", Icon: "local_shipping", SortOrder: 62},
+		{Title: "Laporan Penjualan", Path: "/reports/sales", Icon: "assessment", SortOrder: 63},
 	}
 
 	for _, nm := range newMenus {

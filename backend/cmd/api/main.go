@@ -95,6 +95,7 @@ func main() {
 	protected.GET("/orders/:id", handlers.GetOrderByID)
 	protected.POST("/orders", handlers.CreateOrder)
 	protected.PUT("/orders/:id/status", handlers.UpdateOrderStatus)
+	protected.PUT("/orders/items/:itemId/ready", handlers.UpdateOrderItemReady)
 	protected.POST("/orders/:id/void", handlers.VoidOrder)
 
 	// ─── Payments ─────────────────────────────────────────────────────────────
@@ -139,6 +140,7 @@ func main() {
 
 	protected.GET("/reports/financial", handlers.GetFinancialReport)
 	protected.GET("/reports/financial/export", handlers.ExportFinancialCSV)
+	protected.GET("/reports/sales", handlers.GetDetailedSalesReport)
 	protected.GET("/reports/ingredients", handlers.GetIngredientConsumptionReport)
 
 	// ─── Settings ─────────────────────────────────────────────────────────────

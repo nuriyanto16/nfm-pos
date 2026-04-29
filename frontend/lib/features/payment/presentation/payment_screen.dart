@@ -17,6 +17,8 @@ class PaymentScreen extends ConsumerStatefulWidget {
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   String selectedMethod = 'Tunai';
+  String orderSource = 'Resto';
+  String deliveryMethod = 'Makan di Tempat';
   final TextEditingController amountController = TextEditingController();
   final TextEditingController referenceController = TextEditingController();
   final TextEditingController shippingFeeController = TextEditingController();
@@ -78,6 +80,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           'discount_amount': cart.discountAmount,
           'shipping_fee': double.tryParse(shippingFeeController.text.replaceAll('.', '').replaceAll(',', '')) ?? 0,
           'notes': cart.notes ?? '',
+          'order_source': orderSource,
+          'delivery_method': deliveryMethod,
           'items': cart.items.map((item) => {
             'menu_id': item.menuId,
             'quantity': item.quantity,
@@ -88,9 +92,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       }
 
       // 2. Process Payment
+      final totalToPay = (createdOrder!['total_amount'] as num).toDouble();
       final amountPaid = selectedMethod == 'Tunai'
-          ? (double.tryParse(amountController.text.replaceAll('.', '').replaceAll(',', '')) ?? 0)
-          : createdOrder!['total_amount'];
+          ? (double.tryParse(amountController.text.replaceAll('.', '').replaceAll(',', '')) ?? totalToPay)
+          : totalToPay;
 
       final paymentData = {
         'order_id': createdOrder!['id'],
@@ -217,8 +222,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final amountPaid = double.tryParse(amountController.text.replaceAll('.', '').replaceAll(',', '')) ?? 0;
     final change = amountPaid - total;
     final isNonCash = selectedMethod != 'Tunai';
-    final bool isPaid = createdOrder != null && (createdOrder!['is_paid'] == true);
-    final canPay = !isPaid && !isProcessing && (isNonCash || change >= 0) && (createdOrder != null || cart.items.isNotEmpty);
+    final bool isPaid = createdOrder != null && (createdOrder!['is_paid'] == true || createdOrder!['is_paid'] == 1);
+    // canPay: allow if not paid, not processing, and either (non-cash or cash with enough money) OR it's an existing order we're settling
+    final canPay = !isPaid && !isProcessing && (createdOrder != null || (cart.items.isNotEmpty && (isNonCash || change >= 0)));
 
     return Scaffold(
       appBar: AppBar(
@@ -273,9 +279,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               isNonCash: isNonCash,
               canPay: canPay,
               isProcessing: isProcessing,
+              isPaid: isPaid,
               onMethodChanged: (v) => setState(() => selectedMethod = v),
               onAmountChanged: () => setState(() {}),
               onPay: _processPayment,
+              orderSource: orderSource,
+              onSourceChanged: (v) => setState(() => orderSource = v!),
+              deliveryMethod: deliveryMethod,
+              onDeliveryMethodChanged: (v) => setState(() => deliveryMethod = v!),
             ),
           ),
         ),
@@ -313,6 +324,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             onMethodChanged: (v) => setState(() => selectedMethod = v),
             onAmountChanged: () => setState(() {}),
             onPay: _processPayment,
+            orderSource: orderSource,
+            onSourceChanged: (v) => setState(() => orderSource = v!),
+            deliveryMethod: deliveryMethod,
+            onDeliveryMethodChanged: (v) => setState(() => deliveryMethod = v!),
           ),
         ],
       ),
@@ -412,6 +427,11 @@ class _PaymentForm extends StatelessWidget {
   final VoidCallback onAmountChanged;
   final VoidCallback onPay;
 
+  final String orderSource;
+  final ValueChanged<String?> onSourceChanged;
+  final String deliveryMethod;
+  final ValueChanged<String?> onDeliveryMethodChanged;
+
   const _PaymentForm({
     required this.selectedMethod,
     required this.amountController,
@@ -428,6 +448,10 @@ class _PaymentForm extends StatelessWidget {
     required this.onMethodChanged,
     required this.onAmountChanged,
     required this.onPay,
+    required this.orderSource,
+    required this.onSourceChanged,
+    required this.deliveryMethod,
+    required this.onDeliveryMethodChanged,
   });
   
   final bool isPaid;
@@ -451,6 +475,26 @@ class _PaymentForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (!isLoadedOrder) ...[
+          const Text('Sumber Pesanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: orderSource,
+            decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12)),
+            items: ['Resto', 'Online', 'Shopee Food', 'Go Food', 'Grab Food'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+            onChanged: onSourceChanged,
+          ),
+          const SizedBox(height: 16),
+          const Text('Metode Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: deliveryMethod,
+            decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12)),
+            items: ['Makan di Tempat', 'Bawa Pulang', 'Pengiriman'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+            onChanged: onDeliveryMethodChanged,
+          ),
+          const SizedBox(height: 20),
+        ],
         // Payment Method selector
         const Text('Metode Pembayaran',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

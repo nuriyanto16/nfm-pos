@@ -202,7 +202,7 @@ class OrderListScreen extends ConsumerWidget {
                                                 ),
                                                 child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusCol)),
                                               ),
-                                              if (order['is_paid'] == true) ...[
+                                              if (order['is_paid'] == true || order['is_paid'] == 1) ...[
                                                 const SizedBox(width: 4),
                                                 const Icon(Icons.check_circle, size: 14, color: Colors.green),
                                               ],
@@ -230,7 +230,7 @@ class OrderListScreen extends ConsumerWidget {
                                       children: [
                                         Text(formatRupiah((order['total_amount'] as num?)?.toDouble() ?? 0), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colorScheme.primary)),
                                         const SizedBox(height: 8),
-                                        if (order['is_paid'] != true)
+                                        if (order['is_paid'] != true && order['is_paid'] != 1)
                                           _SmallActionButton(
                                             icon: Icons.payment,
                                             label: 'Bayar',

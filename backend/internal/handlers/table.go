@@ -21,6 +21,31 @@ func GetTables(c *gin.Context) {
 		return
 	}
 
+	// For each table, find the active order if status is 'Digunakan'
+	var results []map[string]interface{}
+	for _, t := range tables {
+		res := map[string]interface{}{
+			"id":           t.ID,
+			"table_number": t.TableNumber,
+			"status":       t.Status,
+			"capacity":     t.Capacity,
+			"floor":        t.Floor,
+			"image_url":    t.ImageURL,
+			"position_x":   t.PositionX,
+			"position_y":   t.PositionY,
+		}
+
+		if t.Status == "Digunakan" {
+			var activeOrder models.Order
+			if err := database.DB.Where("table_id = ? AND status NOT IN ('Selesai', 'Batal')", t.ID).
+				Order("created_at desc").First(&activeOrder).Error; err == nil {
+				res["active_order"] = activeOrder
+			}
+		}
+		results = append(results, res)
+	}
+
+	pagination.Rows = results
 	c.JSON(http.StatusOK, pagination)
 }
 

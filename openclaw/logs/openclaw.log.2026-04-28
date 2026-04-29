@@ -1,0 +1,84 @@
+2026-04-28 12:43:23,860 - INFO - Telegram Bot started...
+2026-04-28 12:43:23,866 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.3:5000
+2026-04-28 12:43:23,866 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 12:44:36,392 - INFO - 172.18.0.1 - - [28/Apr/2026 12:44:36] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 12:44:41,942 - INFO - 172.18.0.1 - - [28/Apr/2026 12:44:41] "GET /api/logs?limit=20&offset=20 HTTP/1.1" 200 -
+2026-04-28 12:44:44,241 - INFO - 172.18.0.1 - - [28/Apr/2026 12:44:44] "GET / HTTP/1.1" 200 -
+2026-04-28 12:45:04,305 - INFO - 172.18.0.1 - - [28/Apr/2026 12:45:04] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 12:45:08,429 - INFO - 172.18.0.1 - - [28/Apr/2026 12:45:08] "GET / HTTP/1.1" 200 -
+2026-04-28 12:45:26,988 - INFO - 172.18.0.1 - - [28/Apr/2026 12:45:26] "POST /chat HTTP/1.1" 200 -
+2026-04-28 12:48:50,242 - INFO - Telegram Bot started...
+2026-04-28 12:48:50,250 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.3:5000
+2026-04-28 12:48:50,250 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 12:49:04,453 - INFO - 172.18.0.1 - - [28/Apr/2026 12:49:04] "POST /chat HTTP/1.1" 200 -
+2026-04-28 12:50:28,072 - INFO - 172.18.0.1 - - [28/Apr/2026 12:50:28] "GET / HTTP/1.1" 200 -
+2026-04-28 12:50:54,848 - INFO - 172.18.0.1 - - [28/Apr/2026 12:50:54] "POST /chat HTTP/1.1" 200 -
+2026-04-28 15:37:04,500 - INFO - Telegram Bot started...
+2026-04-28 15:37:04,518 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.3:5000
+2026-04-28 15:37:04,519 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 15:44:49,725 - INFO - 172.18.0.1 - - [28/Apr/2026 15:44:49] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 15:44:50,206 - INFO - 172.18.0.1 - - [28/Apr/2026 15:44:50] "GET /api/knowledge HTTP/1.1" 200 -
+2026-04-28 15:44:52,438 - INFO - 172.18.0.1 - - [28/Apr/2026 15:44:52] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 15:44:56,662 - INFO - 172.18.0.1 - - [28/Apr/2026 15:44:56] "GET / HTTP/1.1" 200 -
+2026-04-28 15:45:21,799 - INFO - 172.18.0.1 - - [28/Apr/2026 15:45:21] "POST /chat HTTP/1.1" 200 -
+2026-04-28 15:55:30,622 - INFO - Telegram Bot started...
+2026-04-28 15:55:30,630 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.2:5000
+2026-04-28 15:55:30,630 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 15:57:16,328 - INFO - 172.18.0.1 - - [28/Apr/2026 15:57:16] "POST /chat HTTP/1.1" 200 -
+2026-04-28 15:58:21,150 - INFO - 172.18.0.1 - - [28/Apr/2026 15:58:21] "POST /chat HTTP/1.1" 200 -
+2026-04-28 15:59:18,358 - INFO - Telegram Bot started...
+2026-04-28 15:59:18,365 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.2:5000
+2026-04-28 15:59:18,365 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 15:59:21,966 - INFO - 172.18.0.1 - - [28/Apr/2026 15:59:21] "GET /api/logs?limit=20&offset=20 HTTP/1.1" 200 -
+2026-04-28 16:01:13,687 - INFO - 172.18.0.1 - - [28/Apr/2026 16:01:13] "GET /api/knowledge HTTP/1.1" 200 -
+2026-04-28 16:01:14,870 - INFO - 172.18.0.1 - - [28/Apr/2026 16:01:14] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 16:02:46,354 - INFO - Telegram Bot started...
+2026-04-28 16:02:46,360 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.2:5000
+2026-04-28 16:02:46,360 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 16:04:22,812 - INFO - 172.18.0.1 - - [28/Apr/2026 16:04:22] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 16:04:23,837 - INFO - 172.18.0.1 - - [28/Apr/2026 16:04:23] "GET /api/knowledge HTTP/1.1" 200 -
+2026-04-28 16:04:25,852 - INFO - 172.18.0.1 - - [28/Apr/2026 16:04:25] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 16:04:28,768 - INFO - 172.18.0.1 - - [28/Apr/2026 16:04:28] "GET / HTTP/1.1" 200 -
+2026-04-28 16:04:42,175 - INFO - 172.18.0.1 - - [28/Apr/2026 16:04:42] "POST /chat HTTP/1.1" 200 -
+2026-04-28 16:06:16,249 - INFO - Telegram Bot started...
+2026-04-28 16:06:16,255 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.2:5000
+2026-04-28 16:06:16,256 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 16:07:01,998 - INFO - 172.18.0.1 - - [28/Apr/2026 16:07:01] "POST /chat HTTP/1.1" 200 -
+2026-04-28 16:08:25,729 - INFO - Telegram Bot started...
+2026-04-28 16:08:25,735 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.18.0.2:5000
+2026-04-28 16:08:25,735 - INFO - [33mPress CTRL+C to quit[0m
+2026-04-28 16:11:18,456 - INFO - 172.18.0.1 - - [28/Apr/2026 16:11:18] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 16:11:26,431 - INFO - 172.18.0.1 - - [28/Apr/2026 16:11:26] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 16:11:29,291 - INFO - 172.18.0.1 - - [28/Apr/2026 16:11:29] "GET / HTTP/1.1" 200 -
+2026-04-28 16:12:15,452 - INFO - 172.18.0.1 - - [28/Apr/2026 16:12:15] "POST /chat HTTP/1.1" 200 -
+2026-04-28 16:13:06,937 - INFO - 172.18.0.1 - - [28/Apr/2026 16:13:06] "GET /api/knowledge HTTP/1.1" 200 -
+2026-04-28 16:13:07,071 - INFO - 172.18.0.1 - - [28/Apr/2026 16:13:07] "POST /chat HTTP/1.1" 200 -
+2026-04-28 16:24:35,604 - INFO - 172.18.0.1 - - [28/Apr/2026 16:24:35] "GET /api/knowledge HTTP/1.1" 200 -
+2026-04-28 16:36:38,682 - INFO - 172.18.0.1 - - [28/Apr/2026 16:36:38] "GET / HTTP/1.1" 200 -
+2026-04-28 16:37:02,598 - INFO - 172.18.0.1 - - [28/Apr/2026 16:37:02] "GET /api/logs?limit=20&offset=0 HTTP/1.1" 200 -
+2026-04-28 16:37:02,789 - INFO - 172.18.0.1 - - [28/Apr/2026 16:37:02] "POST /chat HTTP/1.1" 200 -
+2026-04-28 16:37:47,924 - INFO - 172.18.0.1 - - [28/Apr/2026 16:37:47] "POST /chat HTTP/1.1" 200 -

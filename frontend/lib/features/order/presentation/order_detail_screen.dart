@@ -382,9 +382,12 @@ class OrderDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, Map<String, dynamic> order, String status, Color statusCol) {
+    final isPaid = order['is_paid'] == true || order['is_paid'] == 1;
+    final canBePaid = !isPaid && (status == 'Pending' || status == 'Proses' || status == 'Siap');
+
     return Column(
       children: [
-        if (status == 'Pending' || status == 'Proses')
+        if (canBePaid)
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -394,7 +397,7 @@ class OrderDetailScreen extends ConsumerWidget {
               style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
             ),
           ),
-        if (status == 'Pending' || status == 'Proses') ...[
+        if (!isPaid && (status == 'Pending' || status == 'Proses' || status == 'Siap')) ...[
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,

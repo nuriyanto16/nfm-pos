@@ -128,7 +128,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
         ),
       ),
       body: ordersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+        loading: () => const _KdsSkeleton(),
         error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: Colors.white))),
         data: (orders) {
           if (orders.isEmpty) {
@@ -190,6 +190,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                 statusColor: _statusColor(status),
                 isLoading: _loadingIds.contains(order['id']),
                 onUpdateStatus: (newStatus) => _updateStatus(ref, context, order['id'], newStatus),
+                onUpdateItemStatus: (itemId, isReady) => _updateItemStatus(ref, context, itemId, isReady),
               );
             },
           );
@@ -203,13 +204,23 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
     try {
       final dio = ref.read(dioProvider);
       await dio.put('orders/$id/status', data: {'status': status});
-      // Provider auto-refreshes via stream
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _loadingIds.remove(id));
+    }
+  }
+
+  Future<void> _updateItemStatus(WidgetRef ref, BuildContext context, int itemId, bool isReady) async {
+    try {
+      final dio = ref.read(dioProvider);
+      await dio.put('orders/items/$itemId/ready', data: {'is_ready': isReady});
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 }
@@ -222,6 +233,7 @@ class _KitchenOrderCard extends StatelessWidget {
   final Color statusColor;
   final bool isLoading;
   final Function(String) onUpdateStatus;
+  final Function(int, bool) onUpdateItemStatus;
 
   const _KitchenOrderCard({
     required this.order,
@@ -230,6 +242,7 @@ class _KitchenOrderCard extends StatelessWidget {
     required this.statusColor,
     required this.isLoading,
     required this.onUpdateStatus,
+    required this.onUpdateItemStatus,
   });
 
   @override
@@ -348,18 +361,45 @@ class _KitchenOrderCard extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   item['menu']?['name'] ?? 'Menu',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  style: TextStyle(
+                                    color: item['is_ready'] == true ? Colors.white38 : Colors.white, 
+                                    fontSize: 14,
+                                    decoration: item['is_ready'] == true ? TextDecoration.lineThrough : null,
+                                  ),
                                 ),
                               ),
+                              if (status != 'Selesai')
+                                Transform.scale(
+                                  scale: 0.8,
+                                  child: Checkbox(
+                                    value: item['is_ready'] == true,
+                                    activeColor: Colors.green,
+                                    checkColor: Colors.black,
+                                    side: const BorderSide(color: Colors.white38),
+                                    onChanged: (val) {
+                                      final isReady = val ?? false;
+                                      _showItemConfirm(
+                                        context, 
+                                        item['menu']?['name'] ?? 'Menu', 
+                                        isReady, 
+                                        item['id']
+                                      );
+                                    },
+                                  ),
+                                ),
                             ],
                           ),
                           // Item-level note
                           if (itemNote != null && itemNote.toString().isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(left: 38, top: 2),
+                              padding: const EdgeInsets.only(left: 38, top: 0, bottom: 4),
                               child: Text(
                                 '📝 $itemNote',
-                                style: TextStyle(color: Colors.yellow.shade200, fontSize: 11, fontStyle: FontStyle.italic),
+                                style: TextStyle(
+                                  color: item['is_ready'] == true ? Colors.yellow.withOpacity(0.3) : Colors.yellow.shade200, 
+                                  fontSize: 11, 
+                                  fontStyle: FontStyle.italic
+                                ),
                               ),
                             ),
                         ],
@@ -409,7 +449,7 @@ class _KitchenOrderCard extends StatelessWidget {
                               backgroundColor: Colors.blue,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
-                            onPressed: () => onUpdateStatus('Proses'),
+                            onPressed: () => _showConfirm(context, 'Mulai Proses', 'Proses', Colors.blue),
                             icon: const Icon(Icons.play_arrow),
                             label: const Text('Mulai Proses', style: TextStyle(fontWeight: FontWeight.bold)),
                           )
@@ -419,7 +459,7 @@ class _KitchenOrderCard extends StatelessWidget {
                                   backgroundColor: Colors.green,
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
-                                onPressed: () => onUpdateStatus('Siap'),
+                                onPressed: () => _showConfirm(context, 'Siap Disajikan', 'Siap', Colors.green),
                                 icon: const Icon(Icons.check_circle),
                                 label: const Text('Siap Disajikan', style: TextStyle(fontWeight: FontWeight.bold)),
                               )
@@ -428,11 +468,114 @@ class _KitchenOrderCard extends StatelessWidget {
                                   backgroundColor: Colors.teal,
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
-                                onPressed: () => onUpdateStatus('Selesai'),
+                                onPressed: () => _showConfirm(context, 'Selesaikan Pesanan', 'Selesai', Colors.teal),
                                 icon: const Icon(Icons.done_all),
                                 label: const Text('Selesai (Hapus dari Display)', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showItemConfirm(BuildContext context, String menuName, bool isReady, int itemId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        title: Text(isReady ? 'Selesaikan Item' : 'Batal Selesai', style: const TextStyle(color: Colors.white)),
+        content: Text(
+          isReady ? 'Tandai "$menuName" sebagai SIAP?' : 'Batal tandai "$menuName" sebagai SIAP?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Colors.white38)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: isReady ? Colors.green : Colors.orange),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onUpdateItemStatus(itemId, isReady);
+            },
+            child: const Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showConfirm(BuildContext context, String title, String newStatus, Color color) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text('Ubah status pesanan #${order['id']} menjadi $newStatus?', style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Colors.white38)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: color),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onUpdateStatus(newStatus);
+            },
+            child: const Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── KDS Skeleton ─────────────────────────────────────────────────────────────
+class _KdsSkeleton extends StatelessWidget {
+  const _KdsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 400,
+        mainAxisExtent: 350,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: 6,
+      itemBuilder: (context, index) => Card(
+        color: const Color(0xFF161B22),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(width: 80, height: 20, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4))),
+                  Container(width: 60, height: 20, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4))),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...List.generate(3, (i) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Container(width: 24, height: 24, decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Container(width: 150, height: 16, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4))),
+                  ],
+                ),
+              )),
+              const Spacer(),
+              Container(width: double.infinity, height: 44, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8))),
             ],
           ),
         ),
@@ -454,16 +597,20 @@ class _CounterBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$count', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: color.withOpacity(0.8), fontSize: 11)),
+          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+            child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );

@@ -135,6 +135,10 @@ final _router = GoRouter(
           builder: (context, state) => const FinancialReportScreen(),
         ),
         GoRoute(
+          path: '/reports/sales',
+          builder: (context, state) => const SalesReportScreen(),
+        ),
+        GoRoute(
           path: '/manage-tables',
           builder: (context, state) => const TableManagementScreen(),
         ),
@@ -227,7 +231,6 @@ class PosApp extends ConsumerWidget {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        fontFamily: 'Roboto',
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -235,7 +238,6 @@ class PosApp extends ConsumerWidget {
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
-        fontFamily: 'Roboto',
       ),
       themeMode: themeSettings.themeMode,
       routerConfig: _router,

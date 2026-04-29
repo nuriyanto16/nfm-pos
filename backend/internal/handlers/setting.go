@@ -12,11 +12,33 @@ import (
 func GetSettings(c *gin.Context) {
 	var settings []models.SystemSetting
 	
-	database.DB.Scopes(middleware.GetQueryScope(c)).Find(&settings)
+	// Get branchID from context if exists
+	branchIDVal, branchExists := c.Get("branchID")
+	
+	// We use the scope to filter by companyID and potentially branchID
+	database.DB.Scopes(middleware.GetQueryScope(c)).Order("branch_id ASC").Find(&settings)
 
 	// Convert to map for easier frontend consumption
+	// Since we ordered by branch_id ASC, the entries with branch_id != NULL 
+	// (which come after NULLs) will overwrite the global ones in the map.
+	// This provides automatic "branch overrides global" logic.
 	settingsMap := make(map[string]string)
 	for _, s := range settings {
+		// If branchExists and s.BranchID matches branchIDVal, it's a specific match.
+		// If s.BranchID is nil, it's a global fallback.
+		
+		// If user has a branch, we ONLY want their branch settings OR global ones.
+		// If user is Admin/Executive (no specific branch scope in middleware), 
+		// they see global ones + branch ones (last branch wins).
+		
+		if branchExists && branchIDVal != nil {
+			targetID := branchIDVal.(uint)
+			if s.BranchID != nil && *s.BranchID != targetID {
+				// Skip settings from other branches
+				continue
+			}
+		}
+		
 		settingsMap[s.Key] = s.Value
 	}
 

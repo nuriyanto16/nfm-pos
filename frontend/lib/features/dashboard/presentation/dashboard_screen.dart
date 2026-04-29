@@ -121,10 +121,7 @@ class DashboardScreen extends ConsumerWidget {
                             const SizedBox(height: 24),
                             _SectionCard(
                               title: 'Pesanan Terbaru',
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: _RecentOrdersTable(orders: stats['recent_orders'] as List),
-                              ),
+                              child: _RecentOrdersTable(orders: stats['recent_orders'] as List),
                             ),
                           ],
                         ),
@@ -552,6 +549,16 @@ class _RecentOrdersTable extends StatelessWidget {
 
   const _RecentOrdersTable({required this.orders});
 
+  String _formatTime(String? isoDate) {
+    if (isoDate == null) return '-';
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return DateFormat('dd/MM HH:mm').format(dt);
+    } catch (_) {
+      return isoDate;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (orders.isEmpty) {
@@ -561,22 +568,76 @@ class _RecentOrdersTable extends StatelessWidget {
       ));
     }
 
-    return DataTable(
-      columnSpacing: 24,
-      columns: const [
-        DataColumn(label: Text('Meja')),
-        DataColumn(label: Text('Customer')),
-        DataColumn(label: Text('Total')),
-        DataColumn(label: Text('Status')),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Table(
+      columnWidths: const {
+        0: FlexColumnWidth(1.4), // TGL
+        1: FlexColumnWidth(1.2), // NO. STRUK
+        2: FlexColumnWidth(1.5), // CABANG
+        3: FlexColumnWidth(0.8), // MEJA
+        4: FlexColumnWidth(2.0), // PELANGGAN
+        5: FlexColumnWidth(1.8), // TOTAL
+        6: FlexColumnWidth(1.4), // STATUS
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        // Header
+        TableRow(
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5))),
+          ),
+          children: [
+            _buildHeaderCell('TGL', colorScheme),
+            _buildHeaderCell('NO. STRUK', colorScheme),
+            _buildHeaderCell('CABANG', colorScheme),
+            _buildHeaderCell('MEJA', colorScheme),
+            _buildHeaderCell('PELANGGAN', colorScheme),
+            _buildHeaderCell('TOTAL', colorScheme),
+            _buildHeaderCell('STATUS', colorScheme),
+          ],
+        ),
+        // Data Rows
+        ...orders.map((order) {
+          final branchName = order['branch']?['name'] ?? '-';
+          
+          return TableRow(
+            children: [
+              _buildDataCell(Text(_formatTime(order['created_at']))),
+              _buildDataCell(Text('#${order['id']}', style: const TextStyle(fontWeight: FontWeight.bold))),
+              _buildDataCell(Text(branchName, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              _buildDataCell(Text(order['table'] != null ? 'T.${order['table']['table_number']}' : 'TA')),
+              _buildDataCell(Text(order['customer_name'] ?? 'Guest', maxLines: 1, overflow: TextOverflow.ellipsis)),
+              _buildDataCell(Text(
+                formatRupiah((order['total_amount'] as num).toDouble()), 
+                style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)
+              )),
+              _buildDataCell(_StatusBadge(status: order['status'])),
+            ],
+          );
+        }),
       ],
-      rows: orders.map((order) {
-        return DataRow(cells: [
-          DataCell(Text(order['table'] != null ? 'Meja ${order['table']['table_number']}' : 'Take-away')),
-          DataCell(Text(order['customer_name'] ?? 'Guest')),
-          DataCell(Text(formatRupiah((order['total_amount'] as num).toDouble()))),
-          DataCell(_StatusBadge(status: order['status'])),
-        ]);
-      }).toList(),
+    );
+  }
+
+  Widget _buildHeaderCell(String label, ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.bold, 
+          fontSize: 11, 
+          color: colorScheme.outline
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCell(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: child,
     );
   }
 }

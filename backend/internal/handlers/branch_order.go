@@ -13,7 +13,7 @@ import (
 
 func GetBranchOrders(c *gin.Context) {
 	var orders []models.BranchOrder
-	db := database.DB.Model(&models.BranchOrder{}).Preload("Branch").Preload("Items.Ingredient").Scopes(middleware.GetQueryScope(c))
+	db := database.DB.Table("branch_orders").Model(&models.BranchOrder{}).Preload("Branch").Preload("Items.Ingredient").Scopes(middleware.GetQueryScope(c))
 
 	// Optional filters
 	if status := c.Query("status"); status != "" {

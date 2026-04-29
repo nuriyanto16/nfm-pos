@@ -74,6 +74,15 @@ class ReceiptView extends StatelessWidget {
               child: Text('Pelanggan: ${order['customer_name']}',
                   style: const TextStyle(fontSize: 12, color: Colors.black)),
             ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Sumber: ${order['order_source'] ?? 'Resto'}',
+                  style: const TextStyle(fontSize: 11, color: Colors.black)),
+              Text('Metode: ${order['delivery_method'] ?? 'Dine In'}',
+                  style: const TextStyle(fontSize: 11, color: Colors.black)),
+            ],
+          ),
           const Divider(height: 20, thickness: 1, color: Colors.black54),
 
           // Items
