@@ -31,6 +31,8 @@ openclaw/__pycache__/
 openclaw/venv/
 openclaw/configuration/history.json
 openclaw/configuration/logs/
+openclaw/chat_history.db
+openclaw/logs/
 
 # Database data
 database/data/
