@@ -7,6 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 class SalesReportScreen extends ConsumerStatefulWidget {
@@ -82,7 +83,7 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
           '"${row['order_source']}",'
           '"${row['delivery_method']}",'
           '"${row['payment_method']}",'
-          '"${row['status"]}"\n';
+          '"${row['status']}"\n';
     }
 
     final bytes = utf8.encode(csv);
