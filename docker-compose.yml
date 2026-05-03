@@ -53,6 +53,22 @@ services:
       - backend
     restart: unless-stopped
 
+  landing-page:
+    build:
+      context: ./landing-page
+      dockerfile: Dockerfile
+      args:
+        # Override env at build time for Docker deployments
+        VITE_API_URL: ${LANDING_API_URL:-http://localhost:8080/api}
+        VITE_CHATBOT_URL: ${LANDING_CHATBOT_URL:-http://localhost:5000}
+    container_name: pos_landing
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+      - openclaw
+    restart: unless-stopped
+
   openclaw:
     build:
       context: ./openclaw
@@ -68,6 +84,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - BACKEND_URL=http://host.docker.internal:8080/api/menus
       - PYTHONUNBUFFERED=1
+      - CHAT_SECRET=${CHAT_SECRET:-nfm-chat-secret-changeme-2026}
     volumes:
       - ./openclaw:/openclaw/configuration/
       - ./openclaw/logs:/openclaw/configuration/logs

@@ -21,37 +21,78 @@ class BranchManagementScreen extends ConsumerWidget {
       body: branchesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (branches) => ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: branches.length,
-          itemBuilder: (context, index) {
-            final b = branches[index];
-            final isActive = b['is_active'] == true;
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isActive ? colorScheme.primary : colorScheme.outline,
-                  child: const Icon(Icons.store, color: Colors.white),
+        data: (branches) {
+          if (branches.isEmpty) {
+            return const Center(child: Text('Belum ada cabang.'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: branches.length,
+            itemBuilder: (context, index) {
+              final b = branches[index];
+              final isActive = b['is_active'] == true;
+              
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
                 ),
-                title: Text(b['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${b['code']} · ${b['address'] ?? '-'}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => _showBranchForm(context, ref, b),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isActive ? colorScheme.primary.withOpacity(0.1) : colorScheme.surfaceVariant,
+                      shape: BoxShape.circle,
                     ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: colorScheme.error),
-                      onPressed: () => _deleteBranch(context, ref, b['id']),
+                    child: Icon(
+                      Icons.store_rounded, 
+                      color: isActive ? colorScheme.primary : colorScheme.outline,
                     ),
-                  ],
+                  ),
+                  title: Text(b['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${b['code']} · ${b['address'] ?? "-"}', style: const TextStyle(fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isActive ? 'AKTIF' : 'NONAKTIF',
+                          style: TextStyle(
+                            fontSize: 9, 
+                            fontWeight: FontWeight.bold, 
+                            color: isActive ? Colors.green : Colors.red
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (val) {
+                      if (val == 'edit') _showBranchForm(context, ref, b);
+                      if (val == 'delete') _deleteBranch(context, ref, b['id']);
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 20), SizedBox(width: 12), Text('Edit')])),
+                      PopupMenuItem(
+                        value: 'delete', 
+                        child: Row(children: [Icon(Icons.delete_outline, size: 20, color: colorScheme.error), const SizedBox(width: 12), Text('Hapus', style: TextStyle(color: colorScheme.error))])
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }

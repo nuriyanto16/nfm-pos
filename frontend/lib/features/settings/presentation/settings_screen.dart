@@ -18,6 +18,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _taxController = TextEditingController();
   final _serviceController = TextEditingController();
   final _waSenderController = TextEditingController();
+  final _appNameController = TextEditingController();
+  final _companyNameController = TextEditingController();
   List<dynamic> _accounts = [];
   String? _accSalesId;
   String? _accCashId;
@@ -27,6 +29,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _accInventoryId;
   String? _logoUrl;
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _taxController.dispose();
+    _serviceController.dispose();
+    _waSenderController.dispose();
+    _appNameController.dispose();
+    _companyNameController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -66,6 +78,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _accHppId = data['acc_hpp_id']?.toString();
         _accInventoryId = data['acc_inventory_id']?.toString();
         _logoUrl = data['logo_url']?.toString();
+        _appNameController.text = data['app_name']?.toString() ?? 'NFM POS';
+        _companyNameController.text = data['company_name']?.toString() ?? 'NFM Technology';
       });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat pengaturan: $e')));
@@ -86,6 +100,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         'acc_hpp_id': _accHppId,
         'acc_inventory_id': _accInventoryId,
         'logo_url': _logoUrl,
+        'app_name': _appNameController.text,
+        'company_name': _companyNameController.text,
       });
       if (mounted) {
         ref.invalidate(settingsProvider);
@@ -146,39 +162,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       const Text('Logo \u0026 Branding', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
-                      Center(
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(16),
-                                image: (_logoUrl != null && _logoUrl!.isNotEmpty && _logoUrl != '/')
-                                    ? DecorationImage(
-                                        image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$_logoUrl'),
-                                        fit: BoxFit.contain,
-                                      )
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceVariant.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(16),
+                                  image: (_logoUrl != null && _logoUrl!.isNotEmpty && _logoUrl != '/')
+                                      ? DecorationImage(
+                                          image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$_logoUrl'),
+                                          fit: BoxFit.contain,
+                                        )
+                                      : null,
+                                ),
+                                child: (_logoUrl == null || _logoUrl!.isEmpty || _logoUrl == '/')
+                                    ? const Icon(Icons.restaurant, size: 40, color: Colors.grey)
                                     : null,
                               ),
-                              child: (_logoUrl == null || _logoUrl!.isEmpty || _logoUrl == '/')
-                                  ? const Icon(Icons.restaurant, size: 48, color: Colors.grey)
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: IconButton.filled(
-                                onPressed: _pickLogo,
-                                icon: const Icon(Icons.edit, size: 18),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: IconButton.filled(
+                                  onPressed: _pickLogo,
+                                  icon: const Icon(Icons.edit, size: 16),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                TextField(
+                                  controller: _appNameController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nama Aplikasi (POS)',
+                                    hintText: 'Contoh: NFM POS',
+                                    isDense: true,
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _companyNameController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nama Perusahaan Induk',
+                                    hintText: 'Contoh: NFM Technology',
+                                    isDense: true,
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
-                      const Center(child: Text('Logo Restoran', style: TextStyle(fontSize: 12, color: Colors.grey))),
+                      const Text('Logo dan identitas ini akan muncul di halaman login dan laporan.', style: TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -191,36 +237,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Tema \u0026 Tampilan (Skin)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('Tema & Tampilan (Skin)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
-                      const Text('Warna Utama', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          _buildColorOption(const Color(0xFFE65100), themeSettings.seedColor, themeNotifier),
-                          _buildColorOption(const Color(0xFF1B5E20), themeSettings.seedColor, themeNotifier),
-                          _buildColorOption(const Color(0xFF0D47A1), themeSettings.seedColor, themeNotifier),
-                          _buildColorOption(const Color(0xFF4A148C), themeSettings.seedColor, themeNotifier),
-                          _buildColorOption(const Color(0xFFB71C1C), themeSettings.seedColor, themeNotifier),
-                          _buildColorOption(const Color(0xFF006064), themeSettings.seedColor, themeNotifier),
-                          _buildColorOption(Colors.black, themeSettings.seedColor, themeNotifier),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
+                      // ─── Mode Toggle ───────────────────────────────────
                       const Text('Mode Tampilan', style: TextStyle(fontSize: 13, color: Colors.grey)),
                       const SizedBox(height: 8),
                       SegmentedButton<ThemeMode>(
                         segments: const [
-                          ButtonSegment(value: ThemeMode.system, label: Text('Sistem'), icon: Icon(Icons.brightness_auto)),
-                          ButtonSegment(value: ThemeMode.light, label: Text('Terang'), icon: Icon(Icons.light_mode)),
-                          ButtonSegment(value: ThemeMode.dark, label: Text('Gelap'), icon: Icon(Icons.dark_mode)),
+                          ButtonSegment(value: ThemeMode.system, label: Text('Otomatis'), icon: Icon(Icons.brightness_auto, size: 16)),
+                          ButtonSegment(value: ThemeMode.light, label: Text('Terang'), icon: Icon(Icons.light_mode, size: 16)),
+                          ButtonSegment(value: ThemeMode.dark, label: Text('Gelap'), icon: Icon(Icons.dark_mode, size: 16)),
                         ],
                         selected: {themeSettings.themeMode},
                         onSelectionChanged: (Set<ThemeMode> newSelection) {
                           themeNotifier.setThemeMode(newSelection.first);
                         },
+                      ),
+                      const SizedBox(height: 24),
+                      // ─── Color Presets ─────────────────────────────────
+                      Row(
+                        children: [
+                          const Text('Warna Tema', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                          const Spacer(),
+                          Container(
+                            width: 20, height: 20,
+                            decoration: BoxDecoration(
+                              color: themeSettings.seedColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white30, width: 2),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '#${themeSettings.seedColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+                            style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildColorDot(const Color(0xFF2E7D32), 'Hijau Hutan', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF00695C), 'Teal Gelap', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF1565C0), 'Biru Gelap', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF283593), 'Indigo', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF6A1B9A), 'Ungu', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFFAD1457), 'Pink Gelap', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFFC62828), 'Merah', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFFE65100), 'Oranye', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFFF57F17), 'Kuning Tua', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF558B2F), 'Hijau Lime', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF00838F), 'Cyan', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF0277BD), 'Biru Cerah', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF37474F), 'Abu-Abu', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF212121), 'Hitam', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF4E342E), 'Coklat', themeSettings.seedColor, themeNotifier),
+                          _buildColorDot(const Color(0xFF00796B), 'Hijau Mint', themeSettings.seedColor, themeNotifier),
+                        ],
                       ),
                     ],
                   ),
@@ -233,7 +308,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Konfigurasi Pajak \u0026 Layanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('Konfigurasi Pajak & Layanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
                       TextField(
                         controller: _taxController,
@@ -348,21 +423,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildColorOption(Color color, Color selectedColor, ThemeNotifier notifier) {
+  Widget _buildColorDot(Color color, String name, Color selectedColor, ThemeNotifier notifier) {
     final isSelected = color.value == selectedColor.value;
-    return InkWell(
-      onTap: () => notifier.setSeedColor(color),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
-          boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)] : null,
+    return Tooltip(
+      message: name,
+      preferBelow: false,
+      child: GestureDetector(
+        onTap: () => notifier.setSeedColor(color),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: isSelected
+                ? Border.all(color: Colors.white, width: 3)
+                : Border.all(color: Colors.white24, width: 2),
+            boxShadow: isSelected
+                ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 10, spreadRadius: 2)]
+                : [],
+          ),
+          child: isSelected
+              ? const Icon(Icons.check, color: Colors.white, size: 18)
+              : null,
         ),
-        child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
       ),
     );
   }

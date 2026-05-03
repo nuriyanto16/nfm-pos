@@ -39,7 +39,7 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
     }
 
     try {
-      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
       final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       final dio = Dio();
       final response = await dio.get('${chatbotUrl}api/logs', queryParameters: {

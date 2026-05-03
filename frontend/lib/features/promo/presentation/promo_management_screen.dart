@@ -60,7 +60,7 @@ class _PromoManagementScreenState extends ConsumerState<PromoManagementScreen> {
                 children: [
                   Icon(Icons.local_offer_outlined, size: 64, color: colorScheme.outline),
                   const SizedBox(height: 16),
-                  Text('Belum ada promo', style: TextStyle(color: colorScheme.outline)),
+                  const Text('Belum ada promo aktif'),
                 ],
               ),
             );
@@ -73,56 +73,100 @@ class _PromoManagementScreenState extends ConsumerState<PromoManagementScreen> {
               final isActive = promo['is_active'] == true;
               final type = promo['type'] == 'percentage' ? '%' : 'Rp';
               final value = (promo['value'] as num).toDouble();
+              
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: CircleAvatar(
-                    backgroundColor: isActive ? Colors.green.withOpacity(0.15) : colorScheme.surfaceVariant,
-                    child: Text(
-                      type == '%' ? '${value.toInt()}%' : 'Rp',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        color: isActive ? Colors.green : colorScheme.outline,
+                  contentPadding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.orange.withOpacity(0.1) : colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        type == '%' ? '${value.toInt()}%' : 'Rp',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          color: isActive ? Colors.orange[800] : colorScheme.outline,
+                        ),
                       ),
                     ),
                   ),
-                  title: Text(promo['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(promo['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (promo['description'] != null && promo['description'].toString().isNotEmpty)
-                        Text(promo['description'], style: const TextStyle(fontSize: 12)),
-                      Text(
-                        'Nilai: ${type == '%' ? '${value.toInt()}%' : formatRupiah(value)} | Min. order: ${formatRupiah((promo['min_order'] as num).toDouble())}',
-                        style: const TextStyle(fontSize: 12),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(promo['description'], style: TextStyle(fontSize: 12, color: colorScheme.outline)),
+                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _buildMiniBadge(
+                            isActive ? 'AKTIF' : 'NONAKTIF', 
+                            isActive ? Colors.green : Colors.red
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Min: ${formatRupiah((promo['min_order'] as num).toDouble())}',
+                            style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Switch(
-                        value: isActive,
-                        onChanged: (_) => _togglePromo(promo['id']),
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (val) {
+                      if (val == 'toggle') _togglePromo(promo['id']);
+                      if (val == 'edit') _showPromoForm(context, promo);
+                      if (val == 'delete') _deletePromo(promo['id']);
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'toggle', 
+                        child: Row(children: [
+                          Icon(isActive ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20), 
+                          const SizedBox(width: 12), 
+                          Text(isActive ? 'Nonaktifkan' : 'Aktifkan')
+                        ])
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showPromoForm(context, promo),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline, color: colorScheme.error),
-                        onPressed: () => _deletePromo(promo['id']),
+                      const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 20), SizedBox(width: 12), Text('Edit')])),
+                      PopupMenuItem(
+                        value: 'delete', 
+                        child: Row(children: [Icon(Icons.delete_outline, size: 20, color: colorScheme.error), const SizedBox(width: 12), Text('Hapus', style: TextStyle(color: colorScheme.error))])
                       ),
                     ],
                   ),
-                  isThreeLine: true,
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildMiniBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
       ),
     );
   }

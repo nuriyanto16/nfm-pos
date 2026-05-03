@@ -60,6 +60,7 @@ func ConnectDB() {
 		&models.GoodsReceiptItem{},
 		&models.GoodsIssue{},
 		&models.GoodsIssueItem{},
+		&models.TrialRegistration{},
 	}
 
 	for _, model := range modelsToMigrate {
@@ -118,6 +119,7 @@ func SeedSidebarMenus() {
 		DB.Create(&models.SidebarMenu{Title: "User Management", Path: "/users", Icon: "people", SortOrder: 42})
 		DB.Create(&models.SidebarMenu{Title: "Role Privilege", Path: "/roles", Icon: "security", SortOrder: 43})
 		DB.Create(&models.SidebarMenu{Title: "Sidebar Management", Path: "/management/sidebar", Icon: "menu_open", SortOrder: 44})
+		DB.Create(&models.SidebarMenu{Title: "Registrasi Trial", Path: "/registrations", Icon: "app_registration", SortOrder: 45})
 	}
 
 	// Ensure new menus exist
@@ -126,6 +128,8 @@ func SeedSidebarMenus() {
 		{Title: "Denah Meja", Path: "/layout-tables", Icon: "map", SortOrder: 27},
 		{Title: "Pesanan Cabang", Path: "/inventory/branch-orders", Icon: "local_shipping", SortOrder: 62},
 		{Title: "Laporan Penjualan", Path: "/reports/sales", Icon: "assessment", SortOrder: 63},
+		{Title: "Monitoring Stok", Path: "/inventory/stock-history", Icon: "history", SortOrder: 64},
+		{Title: "Registrasi Trial", Path: "/registrations", Icon: "app_registration", SortOrder: 45},
 	}
 
 	for _, nm := range newMenus {

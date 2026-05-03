@@ -22,24 +22,44 @@ class IngredientReportScreen extends ConsumerWidget {
             return const Center(child: Text('Belum ada data pemakaian bahan.'));
           }
 
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Bahan')),
-                DataColumn(label: Text('Jumlah Terpakai')),
-                DataColumn(label: Text('Satuan')),
-                DataColumn(label: Text('Estimasi Biaya')),
-              ],
-              rows: data.map((item) {
-                return DataRow(cells: [
-                  DataCell(Text(item['name'])),
-                  DataCell(Text(item['total_qty'].toString())),
-                  DataCell(Text(item['unit'])),
-                  DataCell(Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ').format(item['total_cost']))),
-                ]);
-              }).toList(),
-            ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: data.length,
+            itemBuilder: (context, index) {
+              final item = data[index];
+              final colorScheme = Theme.of(context).colorScheme;
+              
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: CircleAvatar(
+                    backgroundColor: colorScheme.primary.withOpacity(0.1),
+                    child: Icon(Icons.auto_stories_outlined, color: colorScheme.primary, size: 20),
+                  ),
+                  title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Terpakai: ${item['total_qty']} ${item['unit']}',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  trailing: Text(
+                    NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(item['total_cost']),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: colorScheme.primary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

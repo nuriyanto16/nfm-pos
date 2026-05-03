@@ -13,104 +13,166 @@ class FloatingChatbot extends StatefulWidget {
   State<FloatingChatbot> createState() => _FloatingChatbotState();
 }
 
-class _FloatingChatbotState extends State<FloatingChatbot> {
+class _FloatingChatbotState extends State<FloatingChatbot>
+    with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   final String _viewId = 'chatbot-iframe';
+  late final AnimationController _animController;
+  late final Animation<double> _scaleAnim;
+
+  // Bottom offset: enough space to clear pagination bars (typically 48–56px tall)
+  static const double _fabBottom = 80;
+  static const double _fabRight = 20;
+  static const double _chatWidth = 400;
+  static const double _chatHeight = 600;
 
   @override
   void initState() {
     super.initState();
-    
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _scaleAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOutBack);
+
     if (kIsWeb) {
-      final String chatbotBaseUrl = dotenv.env['CHATBOT_URL']?.replaceAll('/api/', '/') ?? 'http://127.0.0.1:5000/';
-      // Use the conditional function
+      final String rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
+      final String chatbotBaseUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       registerChatbotWeb(_viewId, chatbotBaseUrl);
     }
   }
 
   @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _isExpanded = !_isExpanded);
+    if (_isExpanded) {
+      _animController.forward();
+    } else {
+      _animController.reverse();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // If not web, don't show the chatbot as it relies on IFrame
     if (!kIsWeb) return const SizedBox.shrink();
+
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Stack(
       children: [
+        // ─── Chat Window ───────────────────────────────────────────────────
         if (_isExpanded)
           Positioned(
-            right: 20,
-            bottom: 90,
-            child: Material(
-              elevation: 20,
-              shadowColor: Colors.black45,
-              borderRadius: BorderRadius.circular(24),
-              clipBehavior: Clip.antiAlias,
-              child: Container(
-                width: 420,
-                height: 650,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).primaryColor,
-                            Theme.of(context).primaryColor.withOpacity(0.8),
+            right: _fabRight,
+            // Position chat window above the FAB with a small gap
+            bottom: _fabBottom + 64,
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              alignment: Alignment.bottomRight,
+              child: Material(
+                elevation: 24,
+                shadowColor: Colors.black38,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Container(
+                  width: _chatWidth,
+                  height: _chatHeight,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      // ── Header ──
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primary,
+                              colorScheme.primary.withOpacity(0.85),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.white24,
+                              radius: 16,
+                              child: const Icon(Icons.smart_toy_outlined,
+                                  color: Colors.white, size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'NFM Assistant',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    '● Online',
+                                    style: TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.close,
+                                  color: Colors.white, size: 20),
+                              onPressed: _toggle,
+                            ),
                           ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          const CircleAvatar(
-                            backgroundColor: Colors.white24,
-                            radius: 16,
-                            child: Icon(Icons.smart_toy_outlined, color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'NFM Assistant',
-                              style: TextStyle(
-                                color: Colors.white, 
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                            onPressed: () => setState(() => _isExpanded = false),
-                          ),
-                        ],
+                      // ── IFrame ──
+                      const Expanded(
+                        child: HtmlElementView(viewType: 'chatbot-iframe'),
                       ),
-                    ),
-                    const Expanded(
-                      child: HtmlElementView(viewType: 'chatbot-iframe'),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
+
+        // ─── FAB ──────────────────────────────────────────────────────────
         Positioned(
-          right: 20,
-          bottom: 20,
-          child: FloatingActionButton(
-            onPressed: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
-            backgroundColor: Theme.of(context).primaryColor,
-            child: Icon(_isExpanded ? Icons.close : Icons.chat_bubble_outline, color: Colors.white),
+          right: _fabRight,
+          bottom: _fabBottom,
+          child: Tooltip(
+            message: _isExpanded ? 'Tutup Chat' : 'Tanya NFM Assistant',
+            child: FloatingActionButton(
+              heroTag: 'chatbot_fab',
+              onPressed: _toggle,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: Colors.white,
+              elevation: 8,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  _isExpanded ? Icons.close : Icons.chat_bubble_outline,
+                  key: ValueKey(_isExpanded),
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
       ],

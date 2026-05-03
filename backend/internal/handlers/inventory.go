@@ -102,6 +102,7 @@ func ApproveGoodsReceipt(c *gin.Context) {
 			IngredientID: item.IngredientID,
 			Type:         "IN",
 			Quantity:     item.Quantity,
+			UserID:       c.GetUint("userID"),
 			Notes:        "Approved Goods Receipt: " + receipt.ReceiptNo,
 		}
 		if err := tx.Create(&history).Error; err != nil {
@@ -209,6 +210,7 @@ func ApproveGoodsIssue(c *gin.Context) {
 			IngredientID: item.IngredientID,
 			Type:         "OUT",
 			Quantity:     item.Quantity,
+			UserID:       c.GetUint("userID"),
 			Notes:        "Approved Goods Issue: " + issue.IssueNo + " - " + item.Notes,
 		}
 		if err := tx.Create(&history).Error; err != nil {

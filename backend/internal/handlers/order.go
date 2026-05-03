@@ -203,6 +203,7 @@ func CreateOrder(c *gin.Context) {
 				OrderID:      &order.ID,
 				Type:         "OUT",
 				Quantity:     qtyToDeduct,
+				UserID:       order.UserID,
 				Notes:        "Order #" + strconv.FormatUint(uint64(order.ID), 10),
 			})
 		}
@@ -449,6 +450,7 @@ func VoidOrder(c *gin.Context) {
 					OrderID:      &order.ID,
 					Type:         "VOID",
 					Quantity:     qtyToRestore,
+					UserID:       c.GetUint("userID"),
 					Notes:        "Void Order #" + strconv.FormatUint(uint64(order.ID), 10),
 				})
 			}

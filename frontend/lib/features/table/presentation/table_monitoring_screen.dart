@@ -17,9 +17,7 @@ class _TableMonitoringScreenState extends ConsumerState<TableMonitoringScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch immediately
     Future.microtask(() => ref.read(tableManagementProvider.notifier).fetchTables());
-    // Set up auto-refresh every 5 seconds
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       ref.read(tableManagementProvider.notifier).fetchTables();
     });
@@ -35,7 +33,6 @@ class _TableMonitoringScreenState extends ConsumerState<TableMonitoringScreen> {
     if (status == 'Kosong') return Colors.green;
     if (status == 'Dipesan') return Colors.orange;
     
-    // If used, check order status
     if (orderStatus == 'Pending') return Colors.red;
     if (orderStatus == 'Proses') return Colors.blue;
     if (orderStatus == 'Siap') return Colors.amber;
@@ -46,9 +43,9 @@ class _TableMonitoringScreenState extends ConsumerState<TableMonitoringScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(tableManagementProvider);
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    // Group tables by floor
     final tablesByFloor = <String, List<dynamic>>{};
     for (var t in state.items) {
       final floor = t['floor']?.toString() ?? '1';
@@ -59,13 +56,21 @@ class _TableMonitoringScreenState extends ConsumerState<TableMonitoringScreen> {
     final sortedFloors = tablesByFloor.keys.toList()..sort();
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Monitoring Status Meja'),
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Monitoring Meja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text('Real-time updates aktif', style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
+          ],
+        ),
         actions: [
           if (state.isLoading)
             const Center(child: Padding(
               padding: EdgeInsets.only(right: 16.0),
-              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
             )),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -75,128 +80,212 @@ class _TableMonitoringScreenState extends ConsumerState<TableMonitoringScreen> {
       ),
       body: state.items.isEmpty && state.isLoading 
         ? const Center(child: CircularProgressIndicator())
-        : ListView(
-        padding: const EdgeInsets.all(16),
-        children: sortedFloors.map((floor) {
-          final tables = tablesByFloor[floor]!;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        : ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: sortedFloors.length,
+            itemBuilder: (context, floorIndex) {
+              final floor = sortedFloors[floorIndex];
+              final tables = tablesByFloor[floor]!;
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.layers_outlined, size: 18, color: colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'AREA / LANTAI $floor', 
+                          style: TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.w900, 
+                            color: colorScheme.primary,
+                            letterSpacing: 1.2,
+                          )
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 160,
+                      childAspectRatio: 0.85,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    itemCount: tables.length,
+                    itemBuilder: (context, i) {
+                      final t = tables[i];
+                      final status = t['status'] ?? 'Kosong';
+                      final activeOrder = t['active_order'];
+                      final orderStatus = activeOrder?['status'];
+                      
+                      final baseColor = _getStatusColor(status, orderStatus);
+                      final isOccupied = status == 'Digunakan';
+
+                      return _buildTableCard(context, t, baseColor, isOccupied, orderStatus);
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              );
+            },
+          ),
+    );
+  }
+
+  Widget _buildTableCard(BuildContext context, dynamic t, Color baseColor, bool isOccupied, String? orderStatus) {
+    final theme = Theme.of(context);
+    final statusText = isOccupied && orderStatus != null ? orderStatus.toUpperCase() : t['status'].toUpperCase();
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: baseColor.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: theme.cardColor,
+          child: Stack(
             children: [
+              Positioned(
+                top: -20,
+                right: -20,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: baseColor.withOpacity(0.05),
+                  ),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: Row(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.layers, size: 20, color: colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text('Area / Lantai $floor', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: baseColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: baseColor),
+                      ),
+                    ),
+                    const Spacer(),
+                    Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            isOccupied ? Icons.restaurant : Icons.table_bar_rounded,
+                            color: baseColor,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${t['table_number']}',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people_outline, size: 12, color: theme.hintColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${t['capacity']} Kursi',
+                          style: TextStyle(fontSize: 10, color: theme.hintColor),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 180,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+              if (isOccupied && orderStatus != 'Siap')
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: _PulseIndicator(color: baseColor),
                 ),
-                itemCount: tables.length,
-                itemBuilder: (context, i) {
-                  final t = tables[i];
-                  final status = t['status'] ?? 'Kosong';
-                  final activeOrder = t['active_order'];
-                  final orderStatus = activeOrder?['status'];
-                  
-                  final baseColor = _getStatusColor(status, orderStatus);
-                  final isOccupied = status == 'Digunakan';
-
-                  return Card(
-                    elevation: 4,
-                    shadowColor: baseColor.withOpacity(0.3),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: baseColor.withOpacity(0.5), width: 2),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white,
-                              baseColor.withOpacity(0.05),
-                            ],
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: baseColor.withOpacity(0.15),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      isOccupied ? Icons.restaurant : Icons.table_restaurant,
-                                      color: baseColor,
-                                      size: 32,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'MEJA ${t['table_number']}',
-                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: baseColor),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: baseColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      isOccupied && orderStatus != null ? orderStatus.toUpperCase() : status.toUpperCase(),
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '${t['capacity']} Kursi',
-                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isOccupied && activeOrder != null)
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(color: baseColor, shape: BoxShape.circle),
-                                  child: const Icon(Icons.priority_high, color: Colors.white, size: 12),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
             ],
-          );
-        }).toList(),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _PulseIndicator extends StatefulWidget {
+  final Color color;
+  const _PulseIndicator({required this.color, super.key});
+
+  @override
+  State<_PulseIndicator> createState() => _PulseIndicatorState();
+}
+
+class _PulseIndicatorState extends State<_PulseIndicator> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.color,
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withOpacity(1 - _controller.value),
+                blurRadius: 10 * _controller.value,
+                spreadRadius: 5 * _controller.value,
+              )
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -41,6 +41,11 @@ IconData _getIconData(String? name) {
     case 'chat': return Icons.chat;
     case 'history': return Icons.history;
     case 'school': return Icons.school;
+    case 'security': return Icons.security;
+    case 'menu_open': return Icons.menu_open;
+    case 'manage_accounts': return Icons.manage_accounts;
+    case 'app_registration': return Icons.app_registration;
+    case 'group_add': return Icons.group_add;
     default: return Icons.circle;
   }
 }
@@ -113,9 +118,16 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
 
   Widget _buildMobileLayout(
       BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync, Map<String, dynamic> user, List<dynamic> menus) {
+    final settingsAsync = ref.watch(settingsProvider);
+    final appName = settingsAsync.when(
+      data: (s) => s['app_name']?.toString() ?? 'NFM POS',
+      loading: () => 'NFM POS',
+      error: (_, __) => 'POS SYSTEM',
+    );
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NFM POS'),
+        title: Text(appName),
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu),
@@ -401,12 +413,13 @@ class _DesktopSidebar extends ConsumerWidget {
                         ),
                         child: const Icon(Icons.restaurant, color: Colors.white, size: 40),
                       ),
-                    const Text(
-                      'NFM POS',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white, letterSpacing: 0.5),
+                    const SizedBox(height: 8),
+                    Text(
+                      settings['app_name']?.toString() ?? 'NFM POS',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white, letterSpacing: 0.5),
                     ),
                     Text(
-                      'Smart Restaurant Solution',
+                      settings['company_name']?.toString() ?? 'Smart Restaurant Solution',
                       style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -414,7 +427,7 @@ class _DesktopSidebar extends ConsumerWidget {
               );
             },
             loading: () => Container(height: 140, color: colorScheme.primary),
-            error: (_, __) => Container(height: 140, color: colorScheme.primary, child: const Center(child: Text('NFM POS', style: TextStyle(color: Colors.white)))),
+            error: (_, __) => Container(height: 140, color: colorScheme.primary, child: const Center(child: Text('POS SYSTEM', style: TextStyle(color: Colors.white)))),
           ),
 
           // ─── Profile Section ──────────────────────────────────────
@@ -545,72 +558,185 @@ class _MobileDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+      width: MediaQuery.of(context).size.width * 0.85,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(topRight: Radius.circular(24), bottomRight: Radius.circular(24)),
+      ),
+      child: Column(
         children: [
+          // Header
           ref.watch(settingsProvider).when(
             data: (settings) {
               final logoUrl = settings['logo_url'];
-              return DrawerHeader(
+              return Container(
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [colorScheme.primary, colorScheme.primaryContainer],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [colorScheme.primary, colorScheme.primary.withRed(200)],
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (logoUrl != null && logoUrl.toString().isNotEmpty && logoUrl.toString() != '/')
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                          image: DecorationImage(
-                            image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$logoUrl'),
-                            fit: BoxFit.contain,
+                    Row(
+                      children: [
+                        if (logoUrl != null && logoUrl.toString().isNotEmpty && logoUrl.toString() != '/')
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: NetworkImage('${ref.watch(imageBaseUrlProvider)}$logoUrl'),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          )
+                        else
+                          const Icon(Icons.restaurant, color: Colors.white, size: 40),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                settings['app_name']?.toString() ?? 'NFM POS',
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.white),
+                              ),
+                              Text(
+                                settings['company_name']?.toString() ?? 'Smart Restaurant Solution',
+                                style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.8)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
-                      )
-                    else
-                      const Icon(Icons.restaurant, color: Colors.white, size: 48),
-                    const SizedBox(height: 8),
-                    const Text('NFM POS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // User Info
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          child: Text(
+                            (user['username'] ?? 'U').substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(user['username'] ?? 'User', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(user['role']?['name'] ?? '-', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11)),
+                          ],
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               );
             },
-            loading: () => DrawerHeader(child: Container()),
-            error: (_, __) => const DrawerHeader(child: Text('NFM POS')),
+            loading: () => Container(height: 180, color: colorScheme.primary),
+            error: (_, __) => Container(height: 180, color: colorScheme.primary, child: const Center(child: Text('POS SYSTEM', style: TextStyle(color: Colors.white)))),
           ),
-          ...menus.map((menu) {
-            if (menu['is_header'] == true) {
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(menu['title'] ?? '', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              );
-            }
-            return ListTile(
-              leading: Icon(_getIconData(menu['icon'])),
-              title: Text(menu['title'] ?? ''),
-              selected: location == menu['path'],
-              onTap: () { Navigator.pop(context); context.go(menu['path']); },
-            );
-          }),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Keluar'),
-            onTap: () => onLogout(context),
+
+          // Session Status
+          sessionAsync.when(
+            data: (session) => InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                onSessionAction(context, session);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                color: session != null ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                child: Row(
+                  children: [
+                    Icon(
+                      session != null ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                      size: 16,
+                      color: session != null ? Colors.green : Colors.orange,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      session != null ? 'Sesi Kasir Aktif' : 'Sesi Kasir Ditutup',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: session != null ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.chevron_right, size: 14, color: session != null ? Colors.green : Colors.orange),
+                  ],
+                ),
+              ),
+            ),
+            loading: () => const LinearProgressIndicator(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+
+          // Menu List
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: menus.map((menu) {
+                if (menu['is_header'] == true) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    child: Text(
+                      menu['title']?.toUpperCase() ?? '',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: colorScheme.outline, letterSpacing: 1.2),
+                    ),
+                  );
+                }
+                final isSelected = location == menu['path'];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: Icon(
+                      _getIconData(menu['icon']),
+                      size: 22,
+                      color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      menu['title'] ?? '',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedTileColor: colorScheme.primaryContainer.withOpacity(0.4),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go(menu['path']);
+                    },
+                    visualDensity: VisualDensity.compact,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+            child: ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              leading: const Icon(Icons.logout_rounded, color: Colors.red),
+              title: const Text('Keluar Aplikasi', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              onTap: () => onLogout(context),
+            ),
           ),
         ],
       ),

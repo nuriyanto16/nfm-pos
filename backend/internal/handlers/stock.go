@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"pos-resto/backend/database"
+	"pos-resto/backend/internal/middleware"
 	"pos-resto/backend/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -10,22 +11,38 @@ import (
 
 func GetStockHistory(c *gin.Context) {
 	var history []models.StockHistory
-	branchID, _ := c.Get("branchID")
 	
 	ingredientID := c.Query("ingredient_id")
+	typeFilter := c.Query("type")
 	
-	db := database.DB.Where("stock_histories.branch_id = ?", branchID).
+	db := database.DB.Scopes(middleware.GetQueryScope(c)).
 		Preload("Ingredient").
-		Preload("Order")
+		Preload("Order").
+		Preload("Branch").
+		Preload("User")
 
 	if ingredientID != "" {
 		db = db.Where("ingredient_id = ?", ingredientID)
 	}
+	
+	if typeFilter != "" {
+		db = db.Where("type = ?", typeFilter)
+	}
 
-	if err := db.Order("created_at desc").Limit(100).Find(&history).Error; err != nil {
+	// Pagination
+	var total int64
+	db.Model(&models.StockHistory{}).Count(&total)
+	
+	limit := 50
+	offset := 0
+	
+	if err := db.Order("created_at desc").Limit(limit).Offset(offset).Find(&history).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stock history"})
 		return
 	}
 
-	c.JSON(http.StatusOK, history)
+	c.JSON(http.StatusOK, gin.H{
+		"rows":  history,
+		"total": total,
+	})
 }

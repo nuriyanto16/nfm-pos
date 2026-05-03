@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"pos-resto/backend/database"
 	"pos-resto/backend/internal/handlers"
@@ -36,6 +37,8 @@ func main() {
 	api.POST("/login", handlers.Login)
 	api.GET("/captcha", handlers.GenerateCaptcha)
 	api.GET("/menus", handlers.GetMenus) // Allow chatbot/public to see menu prices
+	// Registration: 5 attempts per 10 minutes per IP
+	api.POST("/registrations", middleware.RateLimiter(5, 10*time.Minute), handlers.CreateRegistration)
 
 	// Protected routes
 	protected := api.Group("/")
@@ -164,8 +167,14 @@ func main() {
 	protected.GET("/finance/ledger", handlers.GetGeneralLedger)
 
 	// ─── Stock & Ingredients ──────────────────────────────────────────────────
+	protected.GET("/stock/history", handlers.GetStockHistory)
 	// ─── WA Logs ─────────────────────────────────────────────────────────────
 	protected.GET("/wa-logs", handlers.GetWALogs)
+
+	// ─── Trial Registrations ─────────────────────────────────────────────────
+	protected.GET("/registrations", handlers.GetRegistrations)
+	protected.PUT("/registrations/:id", handlers.UpdateRegistrationStatus)
+	protected.DELETE("/registrations/:id", handlers.DeleteRegistration)
 
 	// ─── Inventory Management ──────────────────────────────────────────────────
 	protected.GET("/inventory/receipts", handlers.GetGoodsReceipts)

@@ -17,44 +17,77 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(executiveDashboardProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.of(context).size.width < 700;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard Executive')),
+      appBar: AppBar(
+        title: const Text('Dashboard Executive', style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 0,
+      ),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (stats) => RefreshIndicator(
           onRefresh: () => ref.refresh(executiveDashboardProvider.future),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSummaryCards(stats, colorScheme),
-                const SizedBox(height: 24),
-                _buildRevenueChart(stats, colorScheme),
-                const SizedBox(height: 24),
-                _buildMonthlyRevenueChart(stats, colorScheme),
-                const SizedBox(height: 32),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 3, child: _buildBranchPerformance(stats, colorScheme)),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          _buildBranchOrderTracking(stats, colorScheme),
-                          const SizedBox(height: 24),
-                          _buildBranchOrderList(stats, colorScheme),
-                          const SizedBox(height: 24),
-                          _buildRecentActivities(stats, colorScheme),
-                        ],
+                _buildSummaryCards(stats, colorScheme, isMobile),
+                const SizedBox(height: 20),
+                
+                if (!isMobile)
+                  Row(
+                    children: [
+                      Expanded(child: _buildRevenueChart(stats, colorScheme, isMobile)),
+                      const SizedBox(width: 20),
+                      Expanded(child: _buildMonthlyRevenueChart(stats, colorScheme, isMobile)),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _buildRevenueChart(stats, colorScheme, isMobile),
+                      const SizedBox(height: 20),
+                      _buildMonthlyRevenueChart(stats, colorScheme, isMobile),
+                    ],
+                  ),
+                  
+                const SizedBox(height: 20),
+                
+                if (!isMobile)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildBranchPerformance(stats, colorScheme)),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            _buildBranchOrderTracking(stats, colorScheme),
+                            const SizedBox(height: 20),
+                            _buildBranchOrderList(stats, colorScheme),
+                            const SizedBox(height: 20),
+                            _buildRecentActivities(stats, colorScheme),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _buildBranchPerformance(stats, colorScheme),
+                      const SizedBox(height: 20),
+                      _buildBranchOrderTracking(stats, colorScheme),
+                      const SizedBox(height: 20),
+                      _buildBranchOrderList(stats, colorScheme),
+                      const SizedBox(height: 20),
+                      _buildRecentActivities(stats, colorScheme),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -63,14 +96,14 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCards(Map<String, dynamic> stats, ColorScheme colorScheme) {
+  Widget _buildSummaryCards(Map<String, dynamic> stats, ColorScheme colorScheme, bool isMobile) {
     return GridView.count(
-      crossAxisCount: 4,
+      crossAxisCount: isMobile ? 2 : 4,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 1.6,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: isMobile ? 1.6 : 2.0,
       children: [
         _StatCard(
           title: 'Total Pendapatan',
@@ -104,12 +137,12 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
     final list = stats['branch_performance'] as List? ?? [];
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Performa Cabang', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            const Text('Performa Cabang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             if (list.isEmpty) const Text('Belum ada data')
             else Table(
               columnWidths: const {
@@ -141,7 +174,7 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRevenueChart(Map<String, dynamic> stats, ColorScheme colorScheme) {
+  Widget _buildRevenueChart(Map<String, dynamic> stats, ColorScheme colorScheme, bool isMobile) {
     final chartData = stats['revenue_chart'] as List? ?? [];
     if (chartData.isEmpty) {
       return const Card(
@@ -154,14 +187,14 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Tren Pendapatan (7 Hari Terakhir)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 32),
+            Text('Tren Pendapatan (7 Hari)', style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
             SizedBox(
-              height: 250,
+              height: isMobile ? 180 : 200,
               child: LineChart(
                 LineChartData(
                   lineTouchData: LineTouchData(
@@ -229,7 +262,7 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMonthlyRevenueChart(Map<String, dynamic> stats, ColorScheme colorScheme) {
+  Widget _buildMonthlyRevenueChart(Map<String, dynamic> stats, ColorScheme colorScheme, bool isMobile) {
     final chartData = stats['monthly_revenue_chart'] as List? ?? [];
     if (chartData.isEmpty) {
       return const Card(
@@ -242,14 +275,14 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Tren Pendapatan Bulanan (12 Bulan Terakhir)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 32),
+            Text('Tren Bulanan', style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
             SizedBox(
-              height: 250,
+              height: isMobile ? 180 : 200,
               child: LineChart(
                 LineChartData(
                   lineTouchData: LineTouchData(
@@ -321,18 +354,18 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
     final orderStats = stats['branch_order_stats'] ?? {};
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Row(
               children: [
-                Icon(Icons.local_shipping, color: Colors.blue),
+                Icon(Icons.local_shipping, color: Colors.blue, size: 18),
                 SizedBox(width: 8),
-                Text('Tracking Order Cabang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Tracking Order', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             _buildTrackingRow('Pending Request', orderStats['pending'] ?? 0, Colors.orange),
             const Divider(),
             _buildTrackingRow('Disetujui / Proses', orderStats['approved'] ?? 0, Colors.blue),
@@ -365,18 +398,18 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
     final list = stats['recent_branch_orders'] as List? ?? [];
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Row(
               children: [
-                Icon(Icons.history, color: Colors.blueGrey, size: 20),
+                Icon(Icons.history, color: Colors.blueGrey, size: 18),
                 SizedBox(width: 8),
-                Text('Request Cabang Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Request Terbaru', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             if (list.isEmpty) const Text('Belum ada request'),
             ...list.map((o) => ListTile(
               dense: true,
@@ -418,18 +451,18 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
       children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.input, color: Colors.green, size: 20),
+                    Icon(Icons.input, color: Colors.green, size: 18),
                     SizedBox(width: 8),
-                    Text('Barang Masuk Terakhir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Barang Masuk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 ...receipts.map((r) => ListTile(
                   dense: true,
                   title: Text(r['receipt_no'], style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -443,18 +476,18 @@ class ExecutiveDashboardScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.output, color: Colors.orange, size: 20),
+                    Icon(Icons.output, color: Colors.orange, size: 18),
                     SizedBox(width: 8),
-                    Text('Barang Keluar Terakhir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Barang Keluar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 ...issues.map((i) => ListTile(
                   dense: true,
                   title: Text(i['issue_no'], style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -481,7 +514,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: color, width: 4)),
         ),
@@ -491,15 +524,15 @@ class _StatCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 20),
-                const SizedBox(width: 8),
-                Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500)),
+                Icon(icon, color: color, size: 16),
+                const SizedBox(width: 6),
+                Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 11, fontWeight: FontWeight.w500)),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              child: Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
             ),
           ],
         ),

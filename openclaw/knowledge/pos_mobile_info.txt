@@ -1,0 +1,1 @@
+Sistem POS kini tersedia dalam versi mobile yang responsif. Seluruh fitur manajemen cabang, promo, bahan baku, dan laporan dapat diakses dengan nyaman melalui perangkat smartphone dan tablet. Tampilan telah dioptimalkan untuk navigasi sentuh dengan desain kartu yang modern dan ergonomis.

@@ -18,6 +18,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final isMobile = MediaQuery.of(context).size.width < 700;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -25,33 +26,29 @@ class DashboardScreen extends ConsumerWidget {
         title: const Text('Dashboard Overview', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            onPressed: () => ref.invalidate(dashboardStatsProvider),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: statsAsync.when(
         data: (stats) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ringkasan Bisnis',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
-                        style: TextStyle(color: Theme.of(context).colorScheme.outline),
-                      ),
-                    ],
+                  Text(
+                    'Ringkasan Bisnis',
+                    style: (isMobile ? Theme.of(context).textTheme.titleLarge : Theme.of(context).textTheme.headlineSmall)?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  FilledButton.icon(
-                    onPressed: () => ref.invalidate(dashboardStatsProvider),
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('Refresh'),
+                  Text(
+                    DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
+                    style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 12),
                   ),
                 ],
               ),
@@ -61,13 +58,15 @@ class DashboardScreen extends ConsumerWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 700 ? 2 : 1);
+                  final aspectRatio = isMobile ? 2.8 : 2.2;
+                  
                   return GridView.count(
                     crossAxisCount: crossAxisCount,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 2.2,
+                    childAspectRatio: aspectRatio,
                     children: [
                       _ModernStatCard(
                         title: 'Pendapatan Hari Ini',
@@ -100,80 +99,143 @@ class DashboardScreen extends ConsumerWidget {
               
               const SizedBox(height: 24),
               
-              // Main content grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 1000;
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _SectionCard(
-                              title: 'Tren Penjualan (7 Hari)',
-                              child: SizedBox(
-                                height: 260,
-                                child: _RevenueChart(chartData: stats['revenue_chart'] as List? ?? []),
-                              ),
+              // Main content layout
+              if (!isMobile)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          _SectionCard(
+                            title: 'Tren Penjualan (7 Hari)',
+                            child: SizedBox(
+                              height: 260,
+                              child: _RevenueChart(chartData: stats['revenue_chart'] as List? ?? []),
                             ),
-                            const SizedBox(height: 24),
-                            _SectionCard(
-                              title: 'Pesanan Terbaru',
-                              child: _RecentOrdersTable(orders: stats['recent_orders'] as List),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isWide) const SizedBox(width: 24),
-                      if (isWide)
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _SectionCard(
-                                title: '🔥 Menu Terlaris',
-                                child: _TopItemsList(items: stats['top_items'] as List? ?? []),
-                              ),
-                              const SizedBox(height: 24),
-                              _SectionCard(
-                                title: '⚠️ Stok Menipis',
-                                child: _LowStockWarning(items: stats['low_stock'] as List? ?? []),
-                              ),
-                            ],
                           ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-              
-              // Mobile only lists
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth > 1000) return const SizedBox.shrink();
-                  return Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      _SectionCard(
-                        title: '🔥 Menu Terlaris',
-                        child: _TopItemsList(items: stats['top_items'] as List? ?? []),
+                          const SizedBox(height: 24),
+                          _SectionCard(
+                            title: 'Pesanan Terbaru',
+                            child: _RecentOrdersTable(orders: stats['recent_orders'] as List),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      _SectionCard(
-                        title: '⚠️ Stok Menipis',
-                        child: _LowStockWarning(items: stats['low_stock'] as List? ?? []),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _SectionCard(
+                            title: '🔥 Menu Terlaris',
+                            child: _TopItemsList(items: stats['top_items'] as List? ?? []),
+                          ),
+                          const SizedBox(height: 24),
+                          _SectionCard(
+                            title: '⚠️ Stok Menipis',
+                            child: _LowStockWarning(items: stats['low_stock'] as List? ?? []),
+                          ),
+                        ],
                       ),
-                    ],
-                  );
-                },
-              ),
+                    ),
+                  ],
+                )
+              else
+                // Mobile stacked layout
+                Column(
+                  children: [
+                    _SectionCard(
+                      title: 'Tren Penjualan (7 Hari)',
+                      child: SizedBox(
+                        height: 220,
+                        child: _RevenueChart(chartData: stats['revenue_chart'] as List? ?? []),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionCard(
+                      title: 'Pesanan Terbaru',
+                      child: _RecentOrdersListMobile(orders: stats['recent_orders'] as List),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionCard(
+                      title: '🔥 Menu Terlaris',
+                      child: _TopItemsList(items: stats['top_items'] as List? ?? []),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionCard(
+                      title: '⚠️ Stok Menipis',
+                      child: _LowStockWarning(items: stats['low_stock'] as List? ?? []),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
         loading: () => const _DashboardSkeleton(),
         error: (err, stack) => Center(child: Text('Error: $err')),
       ),
+    );
+  }
+}
+
+// ─── Mobile Specific Component ────────────────────────────────────────────────
+class _RecentOrdersListMobile extends StatelessWidget {
+  final List orders;
+  const _RecentOrdersListMobile({required this.orders});
+
+  @override
+  Widget build(BuildContext context) {
+    if (orders.isEmpty) return const Center(child: Text('Tidak ada pesanan'));
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: orders.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final order = orders[i];
+        final date = DateTime.parse(order['created_at']).toLocal();
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('#${order['id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  _StatusBadge(status: order['status']),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(order['customer_name'] ?? 'Guest', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(
+                          '${DateFormat('HH:mm').format(date)} • ${order['branch']?['name'] ?? "-"} • ${order['table'] != null ? "Meja ${order['table']['table_number']}" : "Takeaway"}',
+                          style: TextStyle(fontSize: 11, color: colorScheme.outline),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    formatRupiah((order['total_amount'] as num).toDouble()),
+                    style: TextStyle(fontWeight: FontWeight.w900, color: colorScheme.primary),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

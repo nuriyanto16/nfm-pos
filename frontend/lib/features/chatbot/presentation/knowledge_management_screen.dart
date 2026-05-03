@@ -28,7 +28,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     });
 
     try {
-      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
       final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       final dio = Dio();
       final response = await dio.get('${chatbotUrl}api/knowledge');
@@ -60,7 +60,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     if (confirm != true) return;
 
     try {
-      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
       final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       final dio = Dio();
       await dio.delete('${chatbotUrl}api/knowledge/$filename');
@@ -75,10 +75,11 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     String content = "";
     String name = filename ?? "";
     bool isEditing = filename != null;
+    final isMobile = MediaQuery.of(context).size.width < 700;
 
     if (isEditing) {
       try {
-        final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+        final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
         final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
         final dio = Dio();
         final response = await dio.get('${chatbotUrl}api/knowledge/$filename');
@@ -91,29 +92,50 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
 
     final nameController = TextEditingController(text: name);
     final contentController = TextEditingController(text: content);
+    final colorScheme = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'Edit Knowledge' : 'Tambah Knowledge Baru'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        title: Row(
+          children: [
+            Icon(isEditing ? Icons.edit_note_rounded : Icons.note_add_rounded, color: colorScheme.primary),
+            const SizedBox(width: 12),
+            Text(isEditing ? 'Edit Knowledge' : 'Tambah Knowledge'),
+          ],
+        ),
         content: SizedBox(
-          width: 600,
+          width: isMobile ? double.infinity : 700,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 16),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Nama File (contoh: info_promo.txt)'),
+                decoration: InputDecoration(
+                  labelText: 'Nama File',
+                  hintText: 'contoh: info_pos_mobile.txt',
+                  prefixIcon: const Icon(Icons.file_present_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
+                ),
                 readOnly: isEditing,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: contentController,
-                maxLines: 15,
-                decoration: const InputDecoration(
+                maxLines: isMobile ? 12 : 15,
+                decoration: InputDecoration(
                   labelText: 'Isi Knowledge',
+                  hintText: 'Tuliskan informasi produk, promo, atau panduan di sini...',
                   alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: colorScheme.surfaceVariant.withOpacity(0.1),
                 ),
               ),
             ],
@@ -121,14 +143,18 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
+              if (nameController.text.isEmpty || contentController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama dan isi tidak boleh kosong')));
+                return;
+              }
               try {
-                final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000/api/';
+                final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
                 final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
                 final dio = Dio();
                 await dio.post('${chatbotUrl}api/knowledge', data: {
-                  'filename': nameController.text,
+                  'filename': nameController.text.endsWith('.txt') ? nameController.text : '${nameController.text}.txt',
                   'content': contentController.text,
                 });
                 Navigator.pop(context);
@@ -138,7 +164,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan knowledge: $e')));
               }
             },
-            child: const Text('Simpan'),
+            child: const Text('Simpan Knowledge'),
           ),
         ],
       ),
@@ -147,9 +173,12 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chatbot Knowledge Management'),
+        title: const Text('Knowledge Base Chatbot'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchFiles),
         ],
@@ -164,25 +193,45 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
                   itemCount: _files.length,
                   itemBuilder: (context, index) {
                     final filename = _files[index];
                     return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                      ),
                       child: ListTile(
-                        leading: const Icon(Icons.description, color: Colors.blue),
-                        title: Text(filename),
-                        subtitle: const Text('File Knowledge (.txt)'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.orange),
-                              onPressed: () => _showEditor(filename),
+                        contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.auto_stories_rounded, color: colorScheme.primary),
+                        ),
+                        title: Text(filename, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          'Dokumen Knowledge Base (.txt)',
+                          style: TextStyle(fontSize: 12, color: colorScheme.outline),
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert),
+                          onSelected: (val) {
+                            if (val == 'edit') _showEditor(filename);
+                            if (val == 'delete') _deleteFile(filename);
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit', 
+                              child: Row(children: [Icon(Icons.edit_outlined, size: 20), SizedBox(width: 12), Text('Edit')])
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteFile(filename),
+                            PopupMenuItem(
+                              value: 'delete', 
+                              child: Row(children: [Icon(Icons.delete_outline, size: 20, color: Colors.red), const SizedBox(width: 12), Text('Hapus', style: TextStyle(color: Colors.red))])
                             ),
                           ],
                         ),

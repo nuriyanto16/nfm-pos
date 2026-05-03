@@ -39,6 +39,8 @@ import 'features/ingredient/presentation/branch_order_screen.dart';
 import 'features/dashboard/presentation/executive_dashboard_screen.dart';
 import 'features/chatbot/presentation/chatbot_history_screen.dart';
 import 'features/chatbot/presentation/knowledge_management_screen.dart';
+import 'features/management/presentation/registration_management_screen.dart';
+import 'features/ingredient/presentation/stock_history_screen.dart';
 import 'shared/widgets/sidebar_layout.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/theme_provider.dart';
@@ -205,12 +207,20 @@ final _router = GoRouter(
           builder: (context, state) => const BranchOrderScreen(),
         ),
         GoRoute(
+          path: '/inventory/stock-history',
+          builder: (context, state) => const StockHistoryScreen(),
+        ),
+        GoRoute(
           path: '/companies',
           builder: (context, state) => const CompanyManagementScreen(),
         ),
         GoRoute(
           path: '/dashboard/executive',
           builder: (context, state) => const ExecutiveDashboardScreen(),
+        ),
+        GoRoute(
+          path: '/registrations',
+          builder: (context, state) => const RegistrationManagementScreen(),
         ),
       ],
     ),

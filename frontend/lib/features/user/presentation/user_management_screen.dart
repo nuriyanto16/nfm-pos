@@ -127,25 +127,77 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
 
   Widget _buildList(List users, ColorScheme colorScheme) {
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       itemCount: users.length,
       itemBuilder: (context, i) {
         final u = users[i];
         final isActive = u['is_active'] == true;
         return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+          ),
           child: ListTile(
-            leading: CircleAvatar(child: Text((u['username'] ?? '?')[0].toUpperCase())),
-            title: Text(u['full_name'] ?? u['username']),
-            subtitle: Text('${u['role']?['name'] ?? 'No Role'} · ${u['branch']?['name'] ?? 'Global'} · ${isActive ? 'Aktif' : 'Nonaktif'}'),
-            trailing: PopupMenuButton(itemBuilder: (_) => [
-              PopupMenuItem(value: 'edit', child: const Text('Edit')),
-              PopupMenuItem(value: 'password', child: const Text('Ganti Password')),
-              PopupMenuItem(value: 'delete', child: const Text('Hapus')),
-            ], onSelected: (v) {
-              if (v == 'edit') _showUserForm(context, u);
-              if (v == 'password') _showChangePassword(context, u);
-              if (v == 'delete') _deleteUser(u['id']);
-            }),
+            contentPadding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            leading: CircleAvatar(
+              backgroundColor: isActive ? colorScheme.primary.withOpacity(0.1) : colorScheme.surfaceVariant,
+              child: Text(
+                (u['username'] ?? '?')[0].toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isActive ? colorScheme.primary : colorScheme.outline,
+                ),
+              ),
+            ),
+            title: Text(
+              u['full_name'] ?? u['username'],
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  '${u['role']?['name'] ?? "No Role"} · ${u['branch']?['name'] ?? "Global"}',
+                  style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    isActive ? 'AKTIF' : 'NONAKTIF',
+                    style: TextStyle(
+                      fontSize: 9, 
+                      fontWeight: FontWeight.bold, 
+                      color: isActive ? Colors.green : Colors.red
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            trailing: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) {
+                if (v == 'edit') _showUserForm(context, u);
+                if (v == 'password') _showChangePassword(context, u);
+                if (v == 'toggle') _toggleActive(u);
+                if (v == 'delete') _deleteUser(u['id']);
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 20), SizedBox(width: 12), Text('Edit')])),
+                const PopupMenuItem(value: 'password', child: Row(children: [Icon(Icons.lock_outline, size: 20), SizedBox(width: 12), Text('Ganti Password')])),
+                PopupMenuItem(value: 'toggle', child: Row(children: [Icon(isActive ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20), const SizedBox(width: 12), Text(isActive ? 'Nonaktifkan' : 'Aktifkan')])),
+                PopupMenuItem(
+                  value: 'delete', 
+                  child: Row(children: [Icon(Icons.delete_outline, size: 20, color: colorScheme.error), const SizedBox(width: 12), Text('Hapus', style: TextStyle(color: colorScheme.error))])
+                ),
+              ],
+            ),
           ),
         );
       },

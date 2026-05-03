@@ -313,10 +313,13 @@ type StockHistory struct {
 	ID           uint       `gorm:"primaryKey" json:"id"`
 	CompanyID    uint       `json:"company_id"`
 	BranchID     uint       `json:"branch_id"`
+	Branch       *Branch    `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
+	UserID       uint       `json:"user_id"`
+	User         *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	IngredientID uint       `gorm:"not null" json:"ingredient_id"`
 	Ingredient   Ingredient `gorm:"foreignKey:IngredientID" json:"ingredient"`
 	OrderID      *uint      `json:"order_id"`
-	Order        *Order     `gorm:"foreignKey:OrderID" json:"order"`
+	Order        *Order     `gorm:"foreignKey:OrderID" json:"order,omitempty"`
 	Type         string     `gorm:"not null;type:varchar(20)" json:"type"` // IN, OUT, ADJUST, WASTE, VOID
 	Quantity     float64    `gorm:"not null" json:"quantity"`
 	Notes        string     `json:"notes"`
@@ -414,4 +417,16 @@ type BranchOrderItem struct {
 	Quantity      float64    `gorm:"not null" json:"quantity"`
 	ApprovedQty   float64    `json:"approved_qty"`
 	Notes         string     `json:"notes"`
+}
+
+// ─── Trial Registration (Landing Page) ────────────────────────────────────────
+
+type TrialRegistration struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	FullName     string    `gorm:"type:varchar(100)" json:"full_name"`
+	Email        string    `gorm:"type:varchar(100)" json:"email"`
+	Phone        string    `gorm:"type:varchar(20)" json:"phone"`
+	BusinessName string    `gorm:"type:varchar(150)" json:"business_name"`
+	Status       string    `gorm:"default:'Pending';type:varchar(20)" json:"status"` // Pending, Contacted, Trialing, Done
+	CreatedAt    time.Time `json:"created_at"`
 }

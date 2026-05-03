@@ -19,12 +19,13 @@ func GetBranches(c *gin.Context) {
 		query = query.Where("is_active = ?", isActive == "true")
 	}
 
-	if err := query.Find(&branches).Error; err != nil {
+	pagination, err := Paginate(c, query, &branches)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch branches"})
 		return
 	}
 
-	c.JSON(http.StatusOK, branches)
+	c.JSON(http.StatusOK, pagination)
 }
 
 func GetBranchByID(c *gin.Context) {

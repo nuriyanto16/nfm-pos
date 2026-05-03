@@ -36,7 +36,7 @@ class TableManagementScreen extends ConsumerWidget {
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 180,
+                    maxCrossAxisExtent: 160,
                     childAspectRatio: 1,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
@@ -46,9 +46,18 @@ class TableManagementScreen extends ConsumerWidget {
                     final t = state.items[i];
                     final isOccupied = t['status'] == 'Digunakan';
                     return Card(
-                      color: isOccupied ? colorScheme.errorContainer : colorScheme.surfaceVariant,
+                      elevation: 2,
+                      shadowColor: isOccupied ? colorScheme.error.withOpacity(0.2) : Colors.black12,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isOccupied ? colorScheme.error.withOpacity(0.5) : colorScheme.outlineVariant,
+                          width: 1,
+                        ),
+                      ),
                       child: InkWell(
                         onTap: () => _showTableForm(context, ref, t),
+                        borderRadius: BorderRadius.circular(16),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
@@ -56,16 +65,43 @@ class TableManagementScreen extends ConsumerWidget {
                             children: [
                               t['image_url'] != null && t['image_url'].toString().isNotEmpty
                                   ? Expanded(
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          '${ref.read(dioProvider).options.baseUrl.replaceAll('/api/', '')}${t['image_url']}',
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
+                                      child: Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.surfaceVariant,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Image.network(
+                                            '${ref.read(dioProvider).options.baseUrl.replaceAll('/api/', '')}${t['image_url']}',
+                                            fit: BoxFit.cover,
+                                            loadingBuilder: (context, child, loadingProgress) {
+                                              if (loadingProgress == null) return child;
+                                              return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                                            },
+                                            errorBuilder: (context, error, stackTrace) => Icon(
+                                              Icons.table_restaurant, 
+                                              size: 40, 
+                                              color: isOccupied ? colorScheme.error : colorScheme.primary.withOpacity(0.5)
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     )
-                                  : Icon(Icons.table_restaurant, color: isOccupied ? colorScheme.error : colorScheme.primary),
+                                  : Container(
+                                      height: 60,
+                                      width: 60,
+                                      decoration: BoxDecoration(
+                                        color: (isOccupied ? colorScheme.error : colorScheme.primary).withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.table_restaurant, 
+                                        color: isOccupied ? colorScheme.error : colorScheme.primary,
+                                        size: 32,
+                                      ),
+                                    ),
                               const SizedBox(height: 8),
                               Text('Meja ${t['table_number']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                               Text('Kapasitas: ${t['capacity']}', style: const TextStyle(fontSize: 12)),

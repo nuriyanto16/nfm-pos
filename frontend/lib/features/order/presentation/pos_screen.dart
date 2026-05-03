@@ -40,7 +40,10 @@ final menuSearchQueryProvider = StateProvider<String>((ref) => "");
 final categoriesProvider = FutureProvider<List<dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
   final res = await dio.get('categories');
-  return res.data['rows'] as List<dynamic>;
+  if (res.data is Map && res.data.containsKey('rows')) {
+    return res.data['rows'] as List<dynamic>;
+  }
+  return res.data as List<dynamic>;
 });
 
 final systemSettingsProvider = FutureProvider<Map<String, String>>((ref) async {
@@ -220,10 +223,10 @@ class _MenuArea extends ConsumerWidget {
               return GridView.builder(
                 padding: const EdgeInsets.all(12),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 200,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
+                  maxCrossAxisExtent: 160,
+                  childAspectRatio: 0.82,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
                 ),
                 itemCount: filtered.length,
                 itemBuilder: (context, index) {
@@ -277,22 +280,18 @@ class _MenuCard extends ConsumerWidget {
             Expanded(
               child: Container(
                 width: double.infinity,
-                color: colorScheme.surfaceContainerHighest,
+                color: colorScheme.surfaceVariant.withOpacity(0.5),
                 child: (menu['image_url'] != null && menu['image_url'].toString().isNotEmpty)
                     ? Image.network(
                         '$imgBase${menu['image_url']}',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Image.network(
-                          _getDummyImage(),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(Icons.fastfood, size: 40, color: colorScheme.primary),
-                        ),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+                        },
+                        errorBuilder: (_, __, ___) => _buildPlaceholderIcon(colorScheme),
                       )
-                    : Image.network(
-                        _getDummyImage(),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(Icons.fastfood, size: 40, color: colorScheme.primary),
-                      ),
+                    : _buildPlaceholderIcon(colorScheme),
               ),
             ),
             Padding(
@@ -325,6 +324,26 @@ class _MenuCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderIcon(ColorScheme colorScheme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.restaurant_menu_rounded, size: 40, color: colorScheme.primary.withOpacity(0.3)),
+          const SizedBox(height: 4),
+          Text(
+            menu['name'].toString().substring(0, 1).toUpperCase(),
+            style: TextStyle(
+              fontSize: 24, 
+              fontWeight: FontWeight.w900, 
+              color: colorScheme.primary.withOpacity(0.2)
+            ),
+          ),
+        ],
       ),
     );
   }
