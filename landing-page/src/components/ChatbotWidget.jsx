@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 // Reads from .env (dev) or .env.production (build) automatically
-const OPENCLAW_URL = import.meta.env.VITE_CHATBOT_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 // Per-session limits (client-side guard layer)
 const MAX_MESSAGES_PER_SESSION = 20;
@@ -26,7 +26,7 @@ const ChatbotWidget = () => {
   // ── Fetch session token on mount ──────────────────────────────────────────
   const fetchToken = useCallback(async () => {
     try {
-      const res = await fetch(`${OPENCLAW_URL}/api/chat-token`);
+      const res = await fetch(`${API_URL}/chatbot/token`);
       if (res.ok) {
         const data = await res.json();
         setChatToken(data.token);
@@ -94,7 +94,7 @@ const ChatbotWidget = () => {
     setMsgCount(c => c + 1);
 
     try {
-      const res = await fetch(`${OPENCLAW_URL}/chat`, {
+      const res = await fetch(`${API_URL}/chatbot/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

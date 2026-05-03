@@ -35,6 +35,7 @@ services:
       DB_PORT: 5432
       JWT_SECRET: ${JWT_SECRET:-supersecretkey_pos_2026}
       PORT: 8080
+      CHATBOT_URL: http://openclaw:5000
     volumes:
       - ./backend/uploads:/root/uploads
     depends_on:
@@ -60,7 +61,6 @@ services:
       args:
         # Override env at build time for Docker deployments
         VITE_API_URL: ${LANDING_API_URL:-http://localhost:8080/api}
-        VITE_CHATBOT_URL: ${LANDING_CHATBOT_URL:-http://localhost:5000}
     container_name: pos_landing
     ports:
       - "3000:80"

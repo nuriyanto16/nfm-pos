@@ -47,3 +47,11 @@ backend/uploads/logo/*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Node
+node_modules/
+dist/
+.next/
+.turbo/
+.cache/
+.eslintcache

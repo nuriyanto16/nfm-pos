@@ -9,8 +9,8 @@ const Hero = () => {
           <h1>Kelola Bisnis Lebih Mudah dengan <span className="gradient-text">NFM POS</span></h1>
           <p>Solusi kasir pintar yang fleksibel untuk skala apa pun. Mulai dari satu gerai UMKM hingga ratusan cabang jaringan Franchise, kami siap mendukung operasional Anda.</p>
           <div className="hero-actions">
-            <a href="#trial" className="btn-hero-primary">Mulai Trial Gratis</a>
-            <a href="#features" className="btn-hero-secondary">Lihat Demo</a>
+            <a href="/#trial" className="btn-hero-primary">Mulai Trial Gratis</a>
+            <a href="/#features" className="btn-hero-secondary">Lihat Demo</a>
           </div>
           <div className="hero-stats">
             <div className="stat-divider"></div>

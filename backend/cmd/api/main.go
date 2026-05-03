@@ -37,6 +37,11 @@ func main() {
 	api.POST("/login", handlers.Login)
 	api.GET("/captcha", handlers.GenerateCaptcha)
 	api.GET("/menus", handlers.GetMenus) // Allow chatbot/public to see menu prices
+	
+	// Chatbot Proxy Routes (Server-side interaction)
+	api.GET("/chatbot/token", handlers.GetChatbotToken)
+	api.POST("/chatbot/chat", handlers.ChatbotProxy)
+
 	// Registration: 5 attempts per 10 minutes per IP
 	api.POST("/registrations", middleware.RateLimiter(5, 10*time.Minute), handlers.CreateRegistration)
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,14 +15,16 @@ const Navbar = () => {
   return (
     <nav className={`navbar ${isScrolled ? 'scrolled glass' : ''}`}>
       <div className="container nav-content">
-        <div className="logo">
+        <Link to="/" className="logo">
           <span className="logo-icon">🚀</span>
           <span className="logo-text">NFM<span className="gradient-text">POS</span></span>
-        </div>
+        </Link>
         <div className="nav-links">
-          <a href="#features">Fitur</a>
-          <a href="#pricing">Harga</a>
-          <a href="#trial" className="btn-primary">Coba Gratis</a>
+          <a href="/#features">Fitur</a>
+          <a href="/#pricing">Harga</a>
+          <Link to="/blog">Blog</Link>
+          <Link to="/kontak">Kontak</Link>
+          <a href="/#trial" className="btn-primary">Coba Gratis</a>
         </div>
       </div>
       <style>{`
@@ -49,6 +52,8 @@ const Navbar = () => {
           gap: 0.5rem;
           font-size: 1.5rem;
           font-weight: 800;
+          text-decoration: none;
+          color: inherit;
         }
         .nav-links {
           display: flex;

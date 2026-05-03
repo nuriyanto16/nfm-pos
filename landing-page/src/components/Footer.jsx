@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
@@ -6,17 +7,17 @@ const Footer = () => {
       <div className="container">
         <div className="footer-grid">
           <div className="footer-brand">
-            <div className="logo">
+            <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
               <span className="logo-icon">🚀</span>
               <span className="logo-text">NFM<span className="gradient-text">POS</span></span>
-            </div>
+            </Link>
             <p>Solusi manajemen bisnis terpercaya dari UMKM hingga jaringan Franchise di seluruh Indonesia.</p>
           </div>
           <div className="footer-links">
             <h4>Produk</h4>
-            <a href="#features">Fitur</a>
-            <a href="#pricing">Harga</a>
-            <a href="#trial">Trial</a>
+            <a href="/#features">Fitur</a>
+            <a href="/#pricing">Harga</a>
+            <a href="/#trial">Trial</a>
           </div>
           <div className="footer-links">
             <h4>Perusahaan</h4>

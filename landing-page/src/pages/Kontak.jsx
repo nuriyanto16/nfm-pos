@@ -14,9 +14,9 @@ const Kontak = () => {
           <h2>Cara Menghubungi</h2>
           <div className="kontak-channels">
             {[
-              { icon: '💬', title: 'WhatsApp', desc: '+62 812-3456-7890', sub: 'Respon dalam < 5 menit (jam kerja)', href: 'https://wa.me/628123456789' },
-              { icon: '📧', title: 'Email', desc: 'hello@nfmpos.id', sub: 'Balasan dalam 1×24 jam', href: 'mailto:hello@nfmpos.id' },
-              { icon: '📍', title: 'Kantor', desc: 'Jakarta, Indonesia', sub: 'Senin – Jumat, 09.00 – 17.00 WIB', href: null },
+              { icon: '💬', title: 'WhatsApp', desc: '+62 8953-8599-6105', sub: 'Respon dalam < 5 menit (jam kerja)', href: 'https://wa.me/62895385996105' },
+              { icon: '📧', title: 'Email', desc: 'nuriyanto.dev@gmail.com', sub: 'Balasan dalam 1×24 jam', href: 'mailto:nuriyanto.dev@gmail.com' },
+              { icon: '📍', title: 'Kantor', desc: 'Jl. Mekar 14 No.45, Mekar Rahayu, Kec. Margaasih, Kabupaten Bandung, Jawa Barat 40218, Indonesia', sub: 'Senin – Jumat, 09.00 – 17.00 WIB', href: null },
             ].map((c) => (
               <div key={c.title} className="channel-card glass">
                 <span className="channel-icon">{c.icon}</span>

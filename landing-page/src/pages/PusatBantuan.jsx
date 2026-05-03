@@ -54,7 +54,7 @@ const PusatBantuan = () => (
         <p>Tim support kami siap membantu Anda 24/7</p>
         <div className="help-contact-actions">
           <a href="/kontak" className="btn-contact-primary">Hubungi Kami</a>
-          <a href="https://wa.me/628123456789" target="_blank" rel="noreferrer" className="btn-contact-wa">
+          <a href="https://wa.me/62895385996105" target="_blank" rel="noreferrer" className="btn-contact-wa">
             💬 WhatsApp
           </a>
         </div>
