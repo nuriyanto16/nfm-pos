@@ -7,8 +7,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'dart:convert';
-import 'dart:js_interop';
-import 'package:web/web.dart' as web;
+import '../../../core/utils/export_helper_stub.dart'
+    if (dart.library.js_util) '../../../core/utils/export_helper_web.dart'
+    if (dart.library.io) '../../../core/utils/export_helper_mobile.dart';
 
 class SalesReportScreen extends ConsumerStatefulWidget {
   const SalesReportScreen({super.key});
@@ -95,14 +96,7 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
           '"${row['status']}"\n';
     }
 
-    final bytes = utf8.encode(csv);
-    final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: 'text/csv'));
-    final url = web.URL.createObjectURL(blob);
-    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
-    anchor.href = url;
-    anchor.download = 'Laporan_Penjualan_${DateFormat('yyyyMMdd').format(_startDate)}_${DateFormat('yyyyMMdd').format(_endDate)}.csv';
-    anchor.click();
-    web.URL.revokeObjectURL(url);
+    exportToExcel(csv, 'Laporan_Penjualan_${DateFormat('yyyyMMdd').format(_startDate)}_${DateFormat('yyyyMMdd').format(_endDate)}.csv');
   }
 
   Future<void> _exportPDF() async {

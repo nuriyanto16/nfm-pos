@@ -113,4 +113,30 @@ Setiap kali ada perubahan kode (Frontend atau Backend), ikuti langkah berikut:
 4. Lakukan rebuild APK (langkah 3) atau jalankan ulang di Chrome (langkah 4).
 
 ---
+
+## 7. Deployment Docker (VM Production)
+
+Untuk melakukan deployment ke Production VM (misal: `nfmtech.my.id`), gunakan Docker Compose:
+
+1. Pastikan Docker & Docker Compose sudah terinstall di VM.
+2. Konfigurasi file `.env` di root folder:
+   ```env
+   # Domain Production
+   LANDING_API_URL=https://api.nfmtech.my.id/api
+   
+   # Konfigurasi Internal (Jangan diubah)
+   CHATBOT_URL=http://openclaw:5000
+   ```
+3. Jalankan perintah deployment:
+   ```bash
+   docker-compose up --build -d
+   ```
+
+### Struktur Port di VM:
+- **Landing Page**: Port 3000 (`https://nfmtech.my.id`)
+- **Dashboard Web**: Port 8081 (`https://pos.nfmtech.my.id`)
+- **Backend API**: Port 8080 (`https://api.nfmtech.my.id`)
+- **Chatbot Service**: Port 5000 (Internal)
+
+---
 *Dibuat oleh Assistant AI untuk POS Resto Project - 2026*
