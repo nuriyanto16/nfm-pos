@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../core/network/dio_client.dart';
 import 'package:intl/intl.dart';
 
 class ChatbotHistoryScreen extends ConsumerStatefulWidget {
@@ -39,10 +40,8 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
     }
 
     try {
-      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
-      final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
-      final dio = Dio();
-      final response = await dio.get('${chatbotUrl}api/logs', queryParameters: {
+      final dio = ref.read(chatbotDioProvider);
+      final response = await dio.get('api/logs', queryParameters: {
         'limit': _limit,
         'offset': _offset,
       });
@@ -59,8 +58,9 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
         _offset += newLogs.length;
       });
     } catch (e) {
+      final baseUrl = ref.read(chatbotUrlProvider);
       setState(() {
-        _error = 'Gagal memuat history chat: $e';
+        _error = 'Gagal memuat history chat (${baseUrl}api/logs): $e';
         _isLoading = false;
         _isMoreLoading = false;
       });

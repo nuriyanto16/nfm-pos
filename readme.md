@@ -122,7 +122,7 @@ Untuk melakukan deployment ke Production VM (misal: `nfmtech.my.id`), gunakan Do
 2. Konfigurasi file `.env` di root folder:
    ```env
    # Domain Production
-   LANDING_API_URL=https://api.nfmtech.my.id/api
+   LANDING_API_URL=https://product.nfmtech.my.id/api
    
    # Konfigurasi Internal (Jangan diubah)
    CHATBOT_URL=http://openclaw:5000
@@ -134,8 +134,8 @@ Untuk melakukan deployment ke Production VM (misal: `nfmtech.my.id`), gunakan Do
 
 ### Struktur Port di VM:
 - **Landing Page**: Port 3000 (`https://nfmtech.my.id`)
-- **Dashboard Web**: Port 8081 (`https://pos.nfmtech.my.id`)
-- **Backend API**: Port 8080 (`https://api.nfmtech.my.id`)
+- **Dashboard Web**: Port 8081 (`https://product.nfmtech.my.id`)
+- **Backend API**: Port 8080 (`https://product.nfmtech.my.id/api`)
 - **Chatbot Service**: Port 5000 (Internal)
 
 ---

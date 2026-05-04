@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../core/network/dio_client.dart';
 
 class KnowledgeManagementScreen extends ConsumerStatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -28,17 +29,16 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     });
 
     try {
-      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
-      final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
-      final dio = Dio();
-      final response = await dio.get('${chatbotUrl}api/knowledge');
+      final dio = ref.read(chatbotDioProvider);
+      final response = await dio.get('api/knowledge');
       setState(() {
         _files = List<String>.from(response.data);
         _isLoading = false;
       });
     } catch (e) {
+      final baseUrl = ref.read(chatbotUrlProvider);
       setState(() {
-        _error = 'Gagal memuat daftar knowledge: $e';
+        _error = 'Gagal memuat daftar knowledge (${baseUrl}api/knowledge): $e';
         _isLoading = false;
       });
     }
@@ -60,10 +60,8 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     if (confirm != true) return;
 
     try {
-      final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
-      final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
-      final dio = Dio();
-      await dio.delete('${chatbotUrl}api/knowledge/$filename');
+      final dio = ref.read(chatbotDioProvider);
+      await dio.delete('api/knowledge/$filename');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File berhasil dihapus')));
       _fetchFiles();
     } catch (e) {
@@ -79,10 +77,8 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
 
     if (isEditing) {
       try {
-        final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
-        final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
-        final dio = Dio();
-        final response = await dio.get('${chatbotUrl}api/knowledge/$filename');
+        final dio = ref.read(chatbotDioProvider);
+        final response = await dio.get('api/knowledge/$filename');
         content = response.data['content'] ?? "";
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat isi file: $e')));
@@ -150,10 +146,8 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
                 return;
               }
               try {
-                final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
-                final chatbotUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
-                final dio = Dio();
-                await dio.post('${chatbotUrl}api/knowledge', data: {
+                final dio = ref.read(chatbotDioProvider);
+                await dio.post('api/knowledge', data: {
                   'filename': nameController.text.endsWith('.txt') ? nameController.text : '${nameController.text}.txt',
                   'content': contentController.text,
                 });

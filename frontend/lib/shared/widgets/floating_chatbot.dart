@@ -37,6 +37,8 @@ class _FloatingChatbotState extends State<FloatingChatbot>
     _scaleAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOutBack);
 
     if (kIsWeb) {
+      // In a regular StatefulWidget, we don't have easy access to 'ref' without converting to ConsumerStatefulWidget.
+      // For now, keep the direct dotenv but match the logic of the provider.
       final String rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
       final String chatbotBaseUrl = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
       registerChatbotWeb(_viewId, chatbotBaseUrl);
