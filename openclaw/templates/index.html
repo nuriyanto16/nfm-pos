@@ -96,10 +96,25 @@
             }
         }
 
+        let chatToken = null;
+
+        async function fetchToken() {
+            try {
+                const res = await fetch("api/chat-token");
+                const data = await res.json();
+                chatToken = data.token;
+            } catch (e) {
+                console.error("Gagal mendapatkan token:", e);
+            }
+        }
+
         async function sendMessage() {
             const inputField = document.getElementById("user-input");
             const message = inputField.value.trim();
             if (!message) return;
+
+            // Fetch token if we don't have one
+            if (!chatToken) await fetchToken();
 
             appendMessage("user", message);
             inputField.value = "";
@@ -117,20 +132,44 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
                         message: message,
-                        user_name: userName || "Web User"
+                        user_name: userName || "Web User",
+                        chat_token: chatToken || ""
                     })
                 });
+
+                if (response.status === 403) {
+                    // Token expired, retry once with new token
+                    await fetchToken();
+                    const retryResponse = await fetch("chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            message: message,
+                            user_name: userName || "Web User",
+                            chat_token: chatToken || ""
+                        })
+                    });
+                    const data = await retryResponse.json();
+                    if (!retryResponse.ok) throw new Error(data.error);
+                    
+                    typingIndicator.style.display = "none";
+                    document.body.appendChild(typingIndicator);
+                    appendMessage("bot", data.reply);
+                    return;
+                }
+
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
 
                 // Hide typing indicator
                 typingIndicator.style.display = "none";
-                document.body.appendChild(typingIndicator); // move it out of chatbox temporarily
+                document.body.appendChild(typingIndicator);
 
                 appendMessage("bot", data.reply);
             } catch (error) {
                 typingIndicator.style.display = "none";
                 document.body.appendChild(typingIndicator);
-                appendMessage("bot", "Maaf, terjadi kesalahan saat terhubung ke server.");
+                appendMessage("bot", error.message || "Maaf, terjadi kesalahan saat terhubung ke server.");
             }
         }
 
