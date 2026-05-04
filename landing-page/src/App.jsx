@@ -7,6 +7,7 @@ import Pricing from './components/Pricing';
 import TrialForm from './components/TrialForm';
 import Footer from './components/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
+import WhatsAppFloat from './components/WhatsAppFloat';
 
 // Inner Pages
 import TentangKami from './pages/TentangKami';
@@ -26,6 +27,7 @@ const HomePage = () => (
     </main>
     <Footer />
     <ChatbotWidget />
+    <WhatsAppFloat />
     <style>{`.app { overflow-x: hidden; }`}</style>
   </div>
 );

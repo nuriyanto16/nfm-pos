@@ -45,6 +45,15 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+@app.after_request
+def add_security_headers(response):
+    # Allow iframing from our specific domains
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' https://product.nfmtech.my.id https://nfmtech.my.id"
+    # Remove X-Frame-Options if it exists or set to allow
+    if 'X-Frame-Options' in response.headers:
+        del response.headers['X-Frame-Options']
+    return response
+
 # ── Rate Limiter (in-memory, per IP) ──────────────────────────────────────────
 limiter = Limiter(
     key_func=get_remote_address,

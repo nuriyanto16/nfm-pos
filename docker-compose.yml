@@ -36,6 +36,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-supersecretkey_pos_2026}
       PORT: 8080
       CHATBOT_URL: http://openclaw:5000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_TOKEN:-8514113935:AAGjt6N-j6BzAsuj7-GGtbytv13h63FTZxM}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-1144650479}
     volumes:
       - ./backend/uploads:/root/uploads
     depends_on:

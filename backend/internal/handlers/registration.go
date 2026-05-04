@@ -121,19 +121,36 @@ func sendTelegramNotification(reg models.TrialRegistration) {
 		}
 	}
 
-	message := fmt.Sprintf("🚀 *Pendaftaran Trial NFM POS Baru!*\n\n"+
-		"*Nama:* %s\n"+
-		"*Bisnis:* %s\n"+
-		"*Email:* %s\n"+
-		"*WhatsApp:* %s\n\n"+
-		"Silakan hubungi segera untuk aktivasi.",
+	message := fmt.Sprintf("🚀 *Pendaftaran Trial Baru!*\n\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"👤 *Nama:* %s\n"+
+		"🏢 *Bisnis:* %s\n"+
+		"📧 *Email:* %s\n"+
+		"📞 *WhatsApp:* `%s`\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n\n"+
+		"💡 *Segera hubungi pendaftar untuk proses aktivasi dan onboarding.*",
 		reg.FullName, reg.BusinessName, reg.Email, reg.Phone)
 
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", token)
+	
+	// Create WhatsApp Link for the button
+	waPhone := reg.Phone
+	if strings.HasPrefix(waPhone, "0") {
+		waPhone = "62" + waPhone[1:]
+	}
+	waLink := fmt.Sprintf("https://wa.me/%s?text=Halo%%20%s,%%20terima%%20kasih%%20sudah%%20mendaftar%%20trial%%20NFM%%20POS.%%20Saya%%20ingin%%20konfirmasi%%20untuk%%20aktivasi%%20akunnya.", waPhone, strings.ReplaceAll(reg.FullName, " ", "%20"))
+
 	payload := map[string]interface{}{
 		"chat_id":    chatID,
 		"text":       message,
 		"parse_mode": "Markdown",
+		"reply_markup": map[string]interface{}{
+			"inline_keyboard": [][]map[string]interface{}{
+				{
+					{"text": "✅ Tindak Lanjuti (WhatsApp)", "url": waLink},
+				},
+			},
+		},
 	}
 	jsonPayload, _ := json.Marshal(payload)
 

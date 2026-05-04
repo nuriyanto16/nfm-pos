@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Conditional import for web-only functionality
@@ -131,6 +132,34 @@ class _FloatingChatbotState extends State<FloatingChatbot>
                                 ],
                               ),
                             ),
+                            IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.open_in_new,
+                                  color: Colors.white70, size: 16),
+                              tooltip: 'Buka di jendela baru',
+                              onPressed: () {
+                                final rawUrl = dotenv.env['CHATBOT_URL'] ?? 'http://127.0.0.1:5000';
+                                final url = rawUrl.endsWith('/') ? rawUrl : '$rawUrl/';
+                                launchUrlString(url, mode: LaunchMode.externalApplication);
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.refresh,
+                                  color: Colors.white70, size: 18),
+                              tooltip: 'Refresh Chat',
+                              onPressed: () {
+                                // Simple way to "refresh" HtmlElementView is to toggle visibility
+                                setState(() => _isExpanded = false);
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  setState(() => _isExpanded = true);
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
                             IconButton(
                               constraints: const BoxConstraints(),
                               padding: EdgeInsets.zero,
