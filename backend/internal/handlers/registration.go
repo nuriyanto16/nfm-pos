@@ -77,10 +77,9 @@ func CreateRegistration(c *gin.Context) {
 func ApproveRegistration(c *gin.Context) {
 	id := c.Param("id")
 
-	// Security check for bot/internal (optional: add a secret token in header)
+	// Security check for bot/internal
 	botToken := c.GetHeader("X-Bot-Token")
 	if botToken != os.Getenv("CHAT_SECRET") && os.Getenv("CHAT_SECRET") != "" {
-		// If not internal bot, check for regular auth
 		if _, exists := c.Get("userID"); !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
@@ -99,6 +98,10 @@ func ApproveRegistration(c *gin.Context) {
 	}
 
 	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memulai transaksi database"})
+		return
+	}
 
 	// 1. Create Company
 	companyCode := strings.ToUpper(strings.ReplaceAll(reg.BusinessName, " ", ""))
@@ -118,7 +121,8 @@ func ApproveRegistration(c *gin.Context) {
 	}
 	if err := tx.Create(&company).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat Company"})
+		log.Printf("Error creating company: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat Company: " + err.Error()})
 		return
 	}
 
@@ -131,16 +135,21 @@ func ApproveRegistration(c *gin.Context) {
 		IsActive:  true,
 		CreatedAt: time.Now(),
 	}
-	tx.Create(&branch)
+	if err := tx.Create(&branch).Error; err != nil {
+		tx.Rollback()
+		log.Printf("Error creating branch: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat Branch: " + err.Error()})
+		return
+	}
 
 	// 3. Create Admin User
 	username := strings.ToLower(strings.Split(reg.Email, "@")[0])
 	if username == "" {
 		username = reg.Phone
 	}
-	// Check if username exists
+	// Check if username exists using transaction
 	var count int64
-	database.DB.Model(&models.User{}).Where("username = ?", username).Count(&count)
+	tx.Model(&models.User{}).Where("username = ?", username).Count(&count)
 	if count > 0 {
 		username = fmt.Sprintf("%s%d", username, reg.ID)
 	}
@@ -158,16 +167,30 @@ func ApproveRegistration(c *gin.Context) {
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 	}
-	tx.Create(&user)
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
+		log.Printf("Error creating user: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat User: " + err.Error()})
+		return
+	}
 
 	// 4. Update Registration Status
-	tx.Model(&reg).Update("status", "Approved")
+	if err := tx.Model(&reg).Update("status", "Approved").Error; err != nil {
+		tx.Rollback()
+		log.Printf("Error updating registration: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update pendaftaran"})
+		return
+	}
 
 	// 5. Seed Basic Data
 	cat := models.Category{CompanyID: company.ID, Name: "Makanan", Description: "Kategori Utama"}
-	tx.Create(&cat)
+	if err := tx.Create(&cat).Error; err != nil {
+		tx.Rollback()
+		log.Printf("Error creating category: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat kategori contoh"})
+		return
+	}
 	
-	// Create some dummy items for Free UMKM
 	menu := models.Menu{
 		CompanyID:   company.ID,
 		CategoryID:  cat.ID,
@@ -176,9 +199,18 @@ func ApproveRegistration(c *gin.Context) {
 		IsAvailable: true,
 		CreatedAt:   time.Now(),
 	}
-	tx.Create(&menu)
+	if err := tx.Create(&menu).Error; err != nil {
+		tx.Rollback()
+		log.Printf("Error creating menu: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat menu contoh"})
+		return
+	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan ke database"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Pendaftaran berhasil disetujui",
