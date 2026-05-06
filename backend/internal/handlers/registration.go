@@ -9,6 +9,7 @@ import (
 	"os"
 	"pos-resto/backend/database"
 	"pos-resto/backend/internal/models"
+	"pos-resto/backend/internal/services"
 	"strings"
 	"time"
 
@@ -211,6 +212,9 @@ func ApproveRegistration(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan ke database"})
 		return
 	}
+
+	// 6. Send WA Notification to user
+	go services.SendApprovalToWA(reg, username, password)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Pendaftaran berhasil disetujui",

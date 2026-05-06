@@ -142,6 +142,22 @@ func CreateOrder(c *gin.Context) {
 	serviceCharge := total * servicePct
 	tax := (total + serviceCharge) * taxPct
 
+	// Check transaction limit for Free plan
+	var comp models.Company
+	if err := database.DB.First(&comp, finalCompanyID).Error; err == nil {
+		if comp.SubscriptionPlan == "Free" {
+			var orderCount int64
+			database.DB.Model(&models.Order{}).Where("company_id = ?", comp.ID).Count(&orderCount)
+			if orderCount >= int64(comp.TransactionLimit) {
+				c.JSON(http.StatusPaymentRequired, gin.H{
+					"error": "Batas transaksi trial (100) telah tercapai. Silakan upgrade ke versi berbayar untuk terus menggunakan layanan.",
+					"limit_reached": true,
+				})
+				return
+			}
+		}
+	}
+
 	order := models.Order{
 		CompanyID:           finalCompanyID,
 		BranchID:            finalBranchID,

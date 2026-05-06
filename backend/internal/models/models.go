@@ -25,15 +25,17 @@ type SidebarMenu struct {
 }
 
 type Company struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Name      string    `gorm:"not null;type:varchar(150)" json:"name"`
-	Code      string    `gorm:"unique;not null;type:varchar(50)" json:"code"`
-	Address   string    `json:"address"`
-	Phone     string    `gorm:"type:varchar(20)" json:"phone"`
-	Email     string    `gorm:"type:varchar(100)" json:"email"`
-	LogoURL   string    `json:"logo_url"`
-	IsActive  bool      `gorm:"default:true" json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
+	ID               uint      `gorm:"primaryKey" json:"id"`
+	Name             string    `gorm:"not null;type:varchar(150)" json:"name"`
+	Code             string    `gorm:"unique;not null;type:varchar(50)" json:"code"`
+	Address          string    `json:"address"`
+	Phone            string    `gorm:"type:varchar(20)" json:"phone"`
+	Email            string    `gorm:"type:varchar(100)" json:"email"`
+	LogoURL          string    `json:"logo_url"`
+	IsActive         bool      `gorm:"default:true" json:"is_active"`
+	SubscriptionPlan string    `gorm:"default:'Free';type:varchar(20)" json:"subscription_plan"` // Free, Pro, Enterprise
+	TransactionLimit int       `gorm:"default:100" json:"transaction_limit"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type Branch struct {

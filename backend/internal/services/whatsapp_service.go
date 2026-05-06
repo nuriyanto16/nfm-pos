@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"pos-resto/backend/database"
 	"pos-resto/backend/internal/models"
+	"time"
 )
 
 // SendReceiptToWA simulates sending a receipt via WhatsApp
@@ -52,4 +53,39 @@ func SendReceiptToWA(customer models.Customer, order models.Order) {
 	} else {
 		fmt.Printf("✅ WA Log created successfully for Order #%d\n", order.ID)
 	}
+}
+
+// SendApprovalToWA sends login credentials to the user via WhatsApp
+func SendApprovalToWA(reg models.TrialRegistration, username, password string) {
+	if reg.Phone == "" {
+		return
+	}
+
+	message := fmt.Sprintf(
+		"🚀 *Pendaftaran NFM POS Disetujui!*\n\n"+
+			"Halo *%s*,\n"+
+			"Selamat! Pendaftaran bisnis *%s* telah disetujui. Sekarang Anda dapat menggunakan NFM POS untuk operasional bisnis Anda.\n\n"+
+			"Berikut adalah kredensial login Anda:\n"+
+			"🌐 URL: https://product.nfmtech.my.id\n"+
+			"👤 Username: `%s`\n"+
+			"🔑 Password: `%s`\n\n"+
+			"💡 *Tips:* Segera ganti password Anda setelah login pertama kali di menu Pengaturan User.\n\n"+
+			"Jika ada kendala, silakan hubungi tim support kami. Selamat berjualan!",
+		reg.FullName,
+		reg.BusinessName,
+		username,
+		password,
+	)
+
+	fmt.Printf("\n--- [SIMULASI WHATSAPP APPROVAL] ---\n📲 Penerima: %s\n💬 Pesan:\n%s\n---------------------------\n",
+		reg.Phone, message)
+
+	// Save log
+	waLog := models.WALog{
+		Phone:     reg.Phone,
+		Message:   message,
+		Status:    "Success",
+		CreatedAt: time.Now(),
+	}
+	database.DB.Create(&waLog)
 }
