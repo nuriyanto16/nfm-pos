@@ -48,7 +48,8 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 @app.after_request
 def add_security_headers(response):
     # Allow iframing from our specific domains
-    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' https://product.nfmtech.my.id https://nfmtech.my.id"
+    # Allow iframing from our specific domains and local development
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' https://product.nfmtech.my.id http://product.nfmtech.my.id https://nfmtech.my.id http://localhost:* http://127.0.0.1:*"
     # Remove X-Frame-Options if it exists or set to allow
     if 'X-Frame-Options' in response.headers:
         del response.headers['X-Frame-Options']
