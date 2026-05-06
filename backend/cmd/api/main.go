@@ -44,6 +44,7 @@ func main() {
 
 	// Registration: 5 attempts per 10 minutes per IP
 	api.POST("/registrations", middleware.RateLimiter(5, 10*time.Minute), handlers.CreateRegistration)
+	api.POST("/registrations/:id/approve", handlers.ApproveRegistration)
 
 	// Protected routes
 	protected := api.Group("/")

@@ -84,8 +84,8 @@ func CreateTable(c *gin.Context) {
 func UpdateTable(c *gin.Context) {
 	id := c.Param("id")
 	var table models.Table
-	if err := database.DB.First(&table, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Table not found"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&table, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Table not found or access denied"})
 		return
 	}
 
@@ -120,8 +120,8 @@ func UpdateTableStatus(c *gin.Context) {
 	}
 
 	var table models.Table
-	if err := database.DB.First(&table, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Table not found"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&table, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Table not found or access denied"})
 		return
 	}
 
@@ -142,8 +142,8 @@ func UpdateTableStatus(c *gin.Context) {
 
 func DeleteTable(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Delete(&models.Table{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete table"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Delete(&models.Table{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete table or access denied"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Table deleted successfully"})
@@ -166,8 +166,8 @@ func UploadTableImage(c *gin.Context) {
 	}
 
 	imageURL := "/" + filepath
-	if err := database.DB.Model(&models.Table{}).Where("id = ?", id).Update("image_url", imageURL).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update table image URL"})
+	if err := database.DB.Model(&models.Table{}).Scopes(middleware.GetQueryScope(c)).Where("id = ?", id).Update("image_url", imageURL).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update table image URL or access denied"})
 		return
 	}
 

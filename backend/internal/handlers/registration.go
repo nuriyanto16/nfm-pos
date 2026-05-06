@@ -13,15 +13,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type RegistrationRequest struct {
-	FullName     string `json:"fullName" binding:"required"`
-	Email        string `json:"email" binding:"required,email"`
-	Phone        string `json:"phone" binding:"required"`
-	BusinessName string `json:"businessName" binding:"required"`
-	CaptchaID    string `json:"captcha_id" binding:"required"`
-	CaptchaValue string `json:"captcha_value" binding:"required"`
+	FullName         string `json:"fullName" binding:"required"`
+	Email            string `json:"email" binding:"required,email"`
+	Phone            string `json:"phone" binding:"required"`
+	BusinessName     string `json:"businessName" binding:"required"`
+	BusinessAddress  string `json:"businessAddress"`
+	BusinessCategory string `json:"businessCategory"`
+	CaptchaID        string `json:"captcha_id" binding:"required"`
+	CaptchaValue     string `json:"captcha_value" binding:"required"`
 }
 
 func CreateRegistration(c *gin.Context) {
@@ -37,7 +40,7 @@ func CreateRegistration(c *gin.Context) {
 		return
 	}
 
-	// Basic phone validation (must be numeric and 9-15 chars)
+	// Basic phone validation
 	digitsOnly := strings.Map(func(r rune) rune {
 		if r >= '0' && r <= '9' {
 			return r
@@ -48,13 +51,16 @@ func CreateRegistration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Nomor telepon tidak valid (9-15 digit angka)."})
 		return
 	}
+
 	registration := models.TrialRegistration{
-		FullName:     req.FullName,
-		Email:        req.Email,
-		Phone:        req.Phone,
-		BusinessName: req.BusinessName,
-		Status:       "Pending",
-		CreatedAt:    time.Now(),
+		FullName:         req.FullName,
+		Email:            req.Email,
+		Phone:            req.Phone,
+		BusinessName:     req.BusinessName,
+		BusinessAddress:  req.BusinessAddress,
+		BusinessCategory: req.BusinessCategory,
+		Status:           "Pending",
+		CreatedAt:        time.Now(),
 	}
 
 	if err := database.DB.Create(&registration).Error; err != nil {
@@ -66,6 +72,121 @@ func CreateRegistration(c *gin.Context) {
 	go sendTelegramNotification(registration)
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Pendaftaran berhasil", "data": registration})
+}
+
+func ApproveRegistration(c *gin.Context) {
+	id := c.Param("id")
+
+	// Security check for bot/internal (optional: add a secret token in header)
+	botToken := c.GetHeader("X-Bot-Token")
+	if botToken != os.Getenv("CHAT_SECRET") && os.Getenv("CHAT_SECRET") != "" {
+		// If not internal bot, check for regular auth
+		if _, exists := c.Get("userID"); !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+	}
+
+	var reg models.TrialRegistration
+	if err := database.DB.First(&reg, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pendaftaran tidak ditemukan"})
+		return
+	}
+
+	if reg.Status == "Approved" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pendaftaran sudah disetujui sebelumnya"})
+		return
+	}
+
+	tx := database.DB.Begin()
+
+	// 1. Create Company
+	companyCode := strings.ToUpper(strings.ReplaceAll(reg.BusinessName, " ", ""))
+	if len(companyCode) > 10 {
+		companyCode = companyCode[:10]
+	}
+	companyCode = fmt.Sprintf("%s%d", companyCode, reg.ID)
+
+	company := models.Company{
+		Name:      reg.BusinessName,
+		Code:      companyCode,
+		Address:   reg.BusinessAddress,
+		Email:     reg.Email,
+		Phone:     reg.Phone,
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}
+	if err := tx.Create(&company).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat Company"})
+		return
+	}
+
+	// 2. Create Branch
+	branch := models.Branch{
+		CompanyID: company.ID,
+		Name:      "Pusat (HQ)",
+		Code:      company.Code + "-01",
+		Address:   reg.BusinessAddress,
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}
+	tx.Create(&branch)
+
+	// 3. Create Admin User
+	username := strings.ToLower(strings.Split(reg.Email, "@")[0])
+	if username == "" {
+		username = reg.Phone
+	}
+	// Check if username exists
+	var count int64
+	database.DB.Model(&models.User{}).Where("username = ?", username).Count(&count)
+	if count > 0 {
+		username = fmt.Sprintf("%s%d", username, reg.ID)
+	}
+
+	password := "nfm12345" // Default password
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	user := models.User{
+		CompanyID:    company.ID,
+		BranchID:     &branch.ID,
+		FullName:     reg.FullName,
+		Username:     username,
+		PasswordHash: string(hash),
+		RoleID:       1, // Admin
+		IsActive:     true,
+		CreatedAt:    time.Now(),
+	}
+	tx.Create(&user)
+
+	// 4. Update Registration Status
+	tx.Model(&reg).Update("status", "Approved")
+
+	// 5. Seed Basic Data
+	cat := models.Category{CompanyID: company.ID, Name: "Makanan", Description: "Kategori Utama"}
+	tx.Create(&cat)
+	
+	// Create some dummy items for Free UMKM
+	menu := models.Menu{
+		CompanyID:   company.ID,
+		CategoryID:  cat.ID,
+		Name:        "Contoh Produk",
+		Price:       15000,
+		IsAvailable: true,
+		CreatedAt:   time.Now(),
+	}
+	tx.Create(&menu)
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Pendaftaran berhasil disetujui",
+		"company":  company.Name,
+		"username": username,
+		"password": password,
+		"url":      "https://product.nfmtech.my.id",
+	})
 }
 
 func GetRegistrations(c *gin.Context) {
@@ -109,37 +230,30 @@ func sendTelegramNotification(reg models.TrialRegistration) {
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
 	chatID := os.Getenv("TELEGRAM_CHAT_ID")
 	if token == "" || chatID == "" {
-		log.Printf("Telegram config missing (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)")
+		log.Printf("Telegram config missing")
 		return
 	}
 
-	// If chatID doesn't start with a number and doesn't have @, assume it's a public channel/user
-	// and needs @ (though numeric ID is strongly preferred for private chats)
 	if _, err := fmt.Sscanf(chatID, "%d", new(int)); err != nil {
 		if chatID[0] != '@' {
 			chatID = "@" + chatID
 		}
 	}
 
-	message := fmt.Sprintf("🚀 *Pendaftaran Trial Baru!*\n\n"+
+	message := fmt.Sprintf("🚀 *Pendaftaran Trial Baru (Free UMKM)*\n\n"+
 		"━━━━━━━━━━━━━━━━━━━━\n"+
 		"👤 *Nama:* %s\n"+
 		"🏢 *Bisnis:* %s\n"+
+		"📁 *Kategori:* %s\n"+
+		"📍 *Alamat:* %s\n"+
 		"📧 *Email:* %s\n"+
 		"📞 *WhatsApp:* `%s`\n"+
 		"━━━━━━━━━━━━━━━━━━━━\n\n"+
-		"💡 *Segera hubungi pendaftar untuk proses aktivasi dan onboarding.*",
-		reg.FullName, reg.BusinessName, reg.Email, reg.Phone)
+		"💡 *Gunakan tombol di bawah untuk menyetujui dan membuat akun dummy otomatis.*",
+		reg.FullName, reg.BusinessName, reg.BusinessCategory, reg.BusinessAddress, reg.Email, reg.Phone)
 
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", token)
 	
-	// Create WhatsApp Link for the button
-	waPhone := reg.Phone
-	if strings.HasPrefix(waPhone, "0") {
-		waPhone = "62" + waPhone[1:]
-	}
-	waLink := fmt.Sprintf("https://wa.me/%s?text=Halo%%20%s,%%20terima%%20kasih%%20sudah%%20mendaftar%%20trial%%20NFM%%20POS.%%20Saya%%20ingin%%20konfirmasi%%20untuk%%20aktivasi%%20akunnya.", waPhone, strings.ReplaceAll(reg.FullName, " ", "%20"))
-
 	payload := map[string]interface{}{
 		"chat_id":    chatID,
 		"text":       message,
@@ -147,30 +261,13 @@ func sendTelegramNotification(reg models.TrialRegistration) {
 		"reply_markup": map[string]interface{}{
 			"inline_keyboard": [][]map[string]interface{}{
 				{
-					{"text": "✅ Tindak Lanjuti (WhatsApp)", "url": waLink},
+					{"text": "✅ Setujui & Buat Akun", "callback_data": fmt.Sprintf("approve_reg:%d", reg.ID)},
+					{"text": "❌ Tolak", "callback_data": fmt.Sprintf("reject_reg:%d", reg.ID)},
 				},
 			},
 		},
 	}
 	jsonPayload, _ := json.Marshal(payload)
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonPayload))
-	if err != nil {
-		log.Printf("Error sending Telegram: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var result map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&result)
-		errMsg := fmt.Sprintf("%v", result["error"])
-		if strings.Contains(errMsg, "chat not found") {
-			log.Printf("Telegram API Error: Chat ID '%s' tidak ditemukan. Pastikan TELEGRAM_CHAT_ID di .env adalah ID angka (bukan username bot) dan Anda sudah men-start bot tersebut.", chatID)
-		} else {
-			log.Printf("Telegram API Error: %v\n", result)
-		}
-	} else {
-		log.Printf("Telegram notification sent successfully to %s", chatID)
-	}
+	http.Post(url, "application/json", bytes.NewBuffer(jsonPayload))
 }

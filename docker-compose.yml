@@ -38,6 +38,7 @@ services:
       CHATBOT_URL: http://openclaw:5000
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_TOKEN:-8514113935:AAGjt6N-j6BzAsuj7-GGtbytv13h63FTZxM}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-1144650479}
+      CHAT_SECRET: ${CHAT_SECRET:-nfm-chat-secret-changeme-2026}
     volumes:
       - ./backend/uploads:/root/uploads
     depends_on:
@@ -84,7 +85,7 @@ services:
     environment:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - BACKEND_URL=http://backend:8080/api/menus
+      - BACKEND_URL=http://backend:8080/api
       - PYTHONUNBUFFERED=1
       - CHAT_SECRET=${CHAT_SECRET:-nfm-chat-secret-changeme-2026}
     volumes:

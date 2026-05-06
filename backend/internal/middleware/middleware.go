@@ -80,7 +80,7 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 			}
 		}
 
-		// Filter by company first (multi-tenancy)
+		// Filter by company first (multi-tenancy) - Mandatory for all
 		if companyExists && companyID != nil {
 			if tableName != "" {
 				tx = tx.Where(fmt.Sprintf("%s.company_id = ?", tableName), companyID)
@@ -89,14 +89,15 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 			}
 		}
 
-		// Executive and Admin can see everything within company (all branches)
+		// Executive and Admin can see everything within their company (all branches)
 		if strings.EqualFold(role, "Executive") || strings.EqualFold(role, "Admin") {
 			return tx
 		}
 
-		// Others are scoped to their branch, allowing NULL branch_id (global items)
+		// Others (Cashier, Kitchen, Manager) are strictly scoped to their branch
 		if branchExists && branchID != nil {
 			if tableName != "" {
+				// Allow branch-specific data OR company-wide master data (branch_id IS NULL)
 				return tx.Where(fmt.Sprintf("(%s.branch_id = ? OR %s.branch_id IS NULL)", tableName, tableName), branchID)
 			}
 			return tx.Where("(branch_id = ? OR branch_id IS NULL)", branchID)

@@ -91,8 +91,8 @@ func CreateUser(c *gin.Context) {
 func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.User
-	if err := database.DB.First(&user, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found or access denied"})
 		return
 	}
 
@@ -128,8 +128,8 @@ func UpdateUser(c *gin.Context) {
 func ChangeUserPassword(c *gin.Context) {
 	id := c.Param("id")
 	var user models.User
-	if err := database.DB.First(&user, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found or access denied"})
 		return
 	}
 
@@ -156,12 +156,12 @@ func ChangeUserPassword(c *gin.Context) {
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.User
-	if err := database.DB.First(&user, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found or access denied"})
 		return
 	}
-	if err := database.DB.Delete(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+	if err := database.DB.Scopes(middleware.GetQueryScope(c)).Delete(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user or access denied"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})

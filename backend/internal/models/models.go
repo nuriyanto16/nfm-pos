@@ -427,6 +427,8 @@ type TrialRegistration struct {
 	Email        string    `gorm:"type:varchar(100)" json:"email"`
 	Phone        string    `gorm:"type:varchar(20)" json:"phone"`
 	BusinessName string    `gorm:"type:varchar(150)" json:"business_name"`
-	Status       string    `gorm:"default:'Pending';type:varchar(20)" json:"status"` // Pending, Contacted, Trialing, Done
+	BusinessAddress string  `gorm:"type:text" json:"business_address"`
+	BusinessCategory string `gorm:"type:varchar(50)" json:"business_category"`
+	Status       string    `gorm:"default:'Pending';type:varchar(20)" json:"status"` // Pending, Approved, Rejected
 	CreatedAt    time.Time `json:"created_at"`
 }

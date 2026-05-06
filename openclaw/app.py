@@ -257,6 +257,41 @@ if bot:
         )
         
         bot.reply_to(message, ai_data['text'])
+        
+    @bot.callback_query_handler(func=lambda call: True)
+    def callback_inline(call):
+        try:
+            if call.data.startswith("approve_reg:"):
+                reg_id = call.data.split(":")[1]
+                # Call backend to approve
+                backend_url = os.environ.get("BACKEND_URL", "http://backend:8080/api")
+                headers = {"X-Bot-Token": CHAT_SECRET}
+                import requests
+                resp = requests.post(f"{backend_url}/registrations/{reg_id}/approve", headers=headers)
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    success_msg = f"✅ *Pendaftaran #{reg_id} Berhasil Disetujui!*\n\n" \
+                                 f"🏢 *Company:* {data['company']}\n" \
+                                 f"👤 *Username:* `{data['username']}`\n" \
+                                 f"🔑 *Password:* `{data['password']}`\n" \
+                                 f"🌐 *URL:* {data['url']}\n\n" \
+                                 f"💡 _Silakan infokan kredensial ini ke pendaftar._"
+                    bot.edit_message_text(chat_id=call.message.chat.id, 
+                                        message_id=call.message.message_id, 
+                                        text=call.message.text + "\n\n" + success_msg, 
+                                        parse_mode="Markdown")
+                else:
+                    bot.answer_callback_query(call.id, f"Gagal: {resp.text}")
+                    
+            elif call.data.startswith("reject_reg:"):
+                reg_id = call.data.split(":")[1]
+                bot.edit_message_text(chat_id=call.message.chat.id, 
+                                    message_id=call.message.message_id, 
+                                    text=call.message.text + "\n\n❌ *Pendaftaran Ditolak*")
+        except Exception as e:
+            logger.error(f"Callback error: {e}")
+            bot.answer_callback_query(call.id, "Terjadi kesalahan internal.")
 
     def run_bot():
         logger.info("Telegram Bot service initialized...")
