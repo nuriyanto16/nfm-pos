@@ -184,14 +184,16 @@ func ApproveRegistration(c *gin.Context) {
 	}
 
 	// 5. Seed Basic Data
-	cat := models.Category{CompanyID: company.ID, Name: "Makanan", Description: "Kategori Utama"}
-	if err := tx.Create(&cat).Error; err != nil {
+	var cat models.Category
+	if err := tx.Where(models.Category{CompanyID: company.ID, Name: "Makanan"}).
+		Assign(models.Category{Description: "Kategori Utama"}).
+		FirstOrCreate(&cat).Error; err != nil {
 		tx.Rollback()
 		log.Printf("Error creating category: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat kategori contoh"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat kategori contoh: " + err.Error()})
 		return
 	}
-	
+
 	menu := models.Menu{
 		CompanyID:   company.ID,
 		CategoryID:  cat.ID,
@@ -203,7 +205,7 @@ func ApproveRegistration(c *gin.Context) {
 	if err := tx.Create(&menu).Error; err != nil {
 		tx.Rollback()
 		log.Printf("Error creating menu: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat menu contoh"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat menu contoh: " + err.Error()})
 		return
 	}
 
