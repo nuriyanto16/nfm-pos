@@ -6,7 +6,7 @@ void registerChatbotWeb(String viewId, String url) {
   // ignore: undefined_prefixed_name
   ui_web.platformViewRegistry.registerViewFactory(
     viewId,
-    (int viewId) {
+    (int id) {
       // Create iframe using raw JS interop via dart:js_util
       // This avoids depending on package:web which causes mobile build issues
       final document = js_util.getProperty(js_util.globalThis, 'document');
@@ -20,7 +20,7 @@ void registerChatbotWeb(String viewId, String url) {
       js_util.setProperty(style, 'width', '100%');
       js_util.setProperty(style, 'height', '100%');
       
-      return iframe;
+      return iframe as Object;
     },
   );
 }
