@@ -258,8 +258,14 @@ if bot:
         bot.reply_to(message, ai_data['text'])
 
     def run_bot():
-        logger.info("Telegram Bot started...")
-        bot.polling(none_stop=True)
+        logger.info("Telegram Bot service initialized...")
+        while True:
+            try:
+                logger.info("Connecting to Telegram...")
+                bot.polling(none_stop=True, timeout=60, interval=0)
+            except Exception as e:
+                logger.error(f"Telegram Bot error: {e}. Retrying in 15 seconds...")
+                time.sleep(15)
 
     # Run bot in background thread
     threading.Thread(target=run_bot, daemon=True).start()

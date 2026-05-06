@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+build
+dist
+.dart_tool
+.pub-cache
+.pub
+*.log
+database/data
+frontend/build
+frontend/.dart_tool
+landing-page/node_modules
+landing-page/dist
+openclaw/logs
+openclaw/__pycache__
+pos_resto_backup.sql
