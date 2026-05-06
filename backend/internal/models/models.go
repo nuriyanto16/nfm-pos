@@ -69,11 +69,11 @@ type User struct {
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 
 type Category struct {
-	ID          uint    `gorm:"primaryKey" json:"id"`
-	CompanyID   uint    `json:"company_id"`
-	BranchID    *uint   `json:"branch_id"`
-	Name        string  `gorm:"unique;not null;type:varchar(100)" json:"name"`
-	Description string  `json:"description"`
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	CompanyID   uint   `gorm:"uniqueIndex:idx_company_category_name" json:"company_id"`
+	BranchID    *uint  `json:"branch_id"`
+	Name        string `gorm:"uniqueIndex:idx_company_category_name;not null;type:varchar(100)" json:"name"`
+	Description string `json:"description"`
 }
 
 type Menu struct {
