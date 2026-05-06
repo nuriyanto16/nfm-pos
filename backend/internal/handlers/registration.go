@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type RegistrationRequest struct {
@@ -183,35 +184,12 @@ func ApproveRegistration(c *gin.Context) {
 		return
 	}
 
-	// 5. Seed Basic Data
-	var cat models.Category
-	if err := tx.Where(models.Category{CompanyID: company.ID, Name: "Makanan"}).
-		Assign(models.Category{Description: "Kategori Utama"}).
-		FirstOrCreate(&cat).Error; err != nil {
-		tx.Rollback()
-		log.Printf("Error creating category: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat kategori contoh: " + err.Error()})
-		return
-	}
-
-	menu := models.Menu{
-		CompanyID:   company.ID,
-		CategoryID:  cat.ID,
-		Name:        "Contoh Produk",
-		Price:       15000,
-		IsAvailable: true,
-		CreatedAt:   time.Now(),
-	}
-	if err := tx.Create(&menu).Error; err != nil {
-		tx.Rollback()
-		log.Printf("Error creating menu: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat menu contoh: " + err.Error()})
-		return
-	}
+	// 5. Seed Basic Data (Optional - Don't fail the whole registration if this fails)
+	seedSampleData(tx, company.ID)
 
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("Error committing transaction: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan ke database"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pendaftaran ke database: " + err.Error()})
 		return
 	}
 
@@ -225,6 +203,30 @@ func ApproveRegistration(c *gin.Context) {
 		"password": password,
 		"url":      "https://product.nfmtech.my.id",
 	})
+}
+
+// helper to seed sample data without breaking the main transaction
+func seedSampleData(tx *gorm.DB, companyID uint) {
+	var cat models.Category
+	err := tx.Where(models.Category{CompanyID: companyID, Name: "Makanan"}).
+		Assign(models.Category{Description: "Kategori Utama"}).
+		FirstOrCreate(&cat).Error
+	if err != nil {
+		log.Printf("Warning: Failed to seed sample category: %v", err)
+		return
+	}
+
+	menu := models.Menu{
+		CompanyID:   companyID,
+		CategoryID:  cat.ID,
+		Name:        "Contoh Produk",
+		Price:       15000,
+		IsAvailable: true,
+		CreatedAt:   time.Now(),
+	}
+	if err := tx.Create(&menu).Error; err != nil {
+		log.Printf("Warning: Failed to seed sample menu: %v", err)
+	}
 }
 
 func GetRegistrations(c *gin.Context) {
