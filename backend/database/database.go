@@ -79,6 +79,25 @@ func ConnectDB() {
 	// Data fix for existing journal items (backfill company/branch from parent)
 	DB.Exec(`UPDATE journal_items SET company_id = journal_entries.company_id, branch_id = journal_entries.branch_id 
 			 FROM journal_entries WHERE journal_items.journal_id = journal_entries.id AND (journal_items.company_id = 0 OR journal_items.company_id IS NULL);`)
+
+	SyncSequences()
+}
+
+func SyncSequences() {
+	log.Println("Syncing database sequences...")
+	tables := []string{
+		"roles", "branches", "users", "customers", "categories", "menus",
+		"ingredients", "suppliers", "promos", "tables", "orders", "payments",
+		"system_settings", "accounts", "journal_entries", "journal_items",
+		"stock_histories", "sidebar_menus", "trial_registrations",
+	}
+
+	for _, table := range tables {
+		query := fmt.Sprintf("SELECT setval(pg_get_serial_sequence('%s', 'id'), COALESCE(MAX(id), 1)) FROM %s;", table, table)
+		if err := DB.Exec(query).Error; err != nil {
+			log.Printf("Warning: failed to sync sequence for %s: %v", table, err)
+		}
+	}
 }
 
 func SeedSidebarMenus() {

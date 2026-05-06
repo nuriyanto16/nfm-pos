@@ -184,14 +184,15 @@ func ApproveRegistration(c *gin.Context) {
 		return
 	}
 
-	// 5. Seed Basic Data (Optional - Don't fail the whole registration if this fails)
-	seedSampleData(tx, company.ID)
-
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("Error committing transaction: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pendaftaran ke database: " + err.Error()})
 		return
 	}
+
+	// 5. Seed Basic Data (Optional - Outside main transaction)
+	// We do this AFTER commit so it doesn't break the main account creation
+	go seedSampleData(company.ID)
 
 	// 6. Send WA Notification to user
 	go services.SendApprovalToWA(reg, username, password)
@@ -205,10 +206,10 @@ func ApproveRegistration(c *gin.Context) {
 	})
 }
 
-// helper to seed sample data without breaking the main transaction
-func seedSampleData(tx *gorm.DB, companyID uint) {
+// helper to seed sample data using global DB
+func seedSampleData(companyID uint) {
 	var cat models.Category
-	err := tx.Where(models.Category{CompanyID: companyID, Name: "Makanan"}).
+	err := database.DB.Where(models.Category{CompanyID: companyID, Name: "Makanan"}).
 		Assign(models.Category{Description: "Kategori Utama"}).
 		FirstOrCreate(&cat).Error
 	if err != nil {
@@ -224,7 +225,7 @@ func seedSampleData(tx *gorm.DB, companyID uint) {
 		IsAvailable: true,
 		CreatedAt:   time.Now(),
 	}
-	if err := tx.Create(&menu).Error; err != nil {
+	if err := database.DB.Create(&menu).Error; err != nil {
 		log.Printf("Warning: Failed to seed sample menu: %v", err)
 	}
 }
