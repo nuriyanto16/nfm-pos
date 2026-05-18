@@ -1,5 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-const IMAGE_BASE = API_BASE.replace('/api', '');
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const IMAGE_BASE = API_BASE === '/api' ? '' : API_BASE.replace('/api', '');
 
 export function getFullUrl(url) {
   if (!url) return '';
