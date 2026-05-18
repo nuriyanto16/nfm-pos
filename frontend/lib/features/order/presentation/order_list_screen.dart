@@ -160,9 +160,11 @@ class OrderListScreen extends ConsumerWidget {
                           final status = order['status'] ?? '';
                           // ... items rendering ...
                           final table = order['table'];
-                          final tableLabel = table != null && table['id'] != null
-                              ? 'Meja ${table['table_number']}'
-                              : 'Take Away';
+                          final tableLabel = (order['order_source'] == 'Online')
+                              ? 'Online (${order['delivery_method']})'
+                              : (table != null && table['id'] != null
+                                  ? 'Meja ${table['table_number']}'
+                                  : 'Take Away');
                           final statusCol = _statusColor(status);
                           final itemCount = (order['items'] as List?)?.length ?? 0;
 
@@ -213,6 +215,17 @@ class OrderListScreen extends ConsumerWidget {
                                           const SizedBox(height: 4),
                                           Row(
                                             children: [
+                                              if (order['order_source'] == 'Online') ...[
+                                                Icon(Icons.public, size: 13, color: Colors.blue),
+                                                const SizedBox(width: 4),
+                                                const Text('ONLINE', style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w900)),
+                                                const SizedBox(width: 12),
+                                              ] else ...[
+                                                Icon(Icons.restaurant_menu, size: 13, color: Colors.orange),
+                                                const SizedBox(width: 4),
+                                                const Text('RESTO', style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w900)),
+                                                const SizedBox(width: 12),
+                                              ],
                                               Icon(Icons.table_restaurant, size: 13, color: colorScheme.outline),
                                               const SizedBox(width: 4),
                                               Text(tableLabel, style: TextStyle(fontSize: 12, color: colorScheme.outline)),

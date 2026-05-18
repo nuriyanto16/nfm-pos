@@ -47,6 +47,8 @@ type Branch struct {
 	Address   string    `json:"address"`
 	Phone     string    `gorm:"type:varchar(20)" json:"phone"`
 	Email     string    `gorm:"type:varchar(100)" json:"email"`
+	OpenTime  string    `gorm:"type:time" json:"open_time"`
+	CloseTime string    `gorm:"type:time" json:"close_time"`
 	IsActive  bool      `gorm:"default:true" json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -151,6 +153,20 @@ type Customer struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type CustomerUser struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	CompanyID    uint      `json:"company_id"`
+	CustomerID   *uint     `json:"customer_id"`
+	Customer     *Customer `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
+	Username     string    `gorm:"unique;not null;type:varchar(50)" json:"username"`
+	PasswordHash string    `gorm:"not null" json:"-"`
+	FullName     string    `gorm:"type:varchar(100)" json:"full_name"`
+	Email        string    `gorm:"type:varchar(100)" json:"email"`
+	Phone        string    `gorm:"type:varchar(20)" json:"phone"`
+	IsActive     bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 // ─── Promo ────────────────────────────────────────────────────────────────────
 
 type Promo struct {
@@ -214,6 +230,9 @@ type Order struct {
 	VoidReason     string      `json:"void_reason"`
 	OrderSource    string      `gorm:"type:varchar(50);default:'Resto'" json:"order_source"`
 	DeliveryMethod string      `gorm:"type:varchar(50);default:'Dine In'" json:"delivery_method"`
+	PaymentMethod  string      `gorm:"type:varchar(50)" json:"payment_method"`
+	ShippingAddress string     `json:"shipping_address"`
+	CustomerUserID *uint       `json:"customer_user_id"`
 }
 
 type OrderItem struct {

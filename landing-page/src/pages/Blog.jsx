@@ -1,8 +1,10 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import PageLayout from './PageLayout';
 
 const posts = [
   {
+    slug: '5-cara-meningkatkan-omzet-restoran',
     tag: 'Tips Bisnis',
     title: '5 Cara Meningkatkan Omzet Restoran dengan Sistem POS Modern',
     excerpt: 'Ketahui bagaimana penggunaan POS yang tepat dapat membantu restoran Anda meningkatkan efisiensi operasional dan mendongkrak pendapatan hingga 30%.',
@@ -11,6 +13,7 @@ const posts = [
     emoji: '📈',
   },
   {
+    slug: 'mengenal-kitchen-display-system',
     tag: 'Fitur Baru',
     title: 'Mengenal Kitchen Display System (KDS): Dapur Digital Era Modern',
     excerpt: 'KDS hadir menggantikan slip kertas di dapur. Pelajari cara kerja, keunggulan, dan bagaimana KDS NFM POS membantu tim dapur Anda bekerja lebih cepat.',
@@ -19,6 +22,7 @@ const posts = [
     emoji: '🍳',
   },
   {
+    slug: 'panduan-manajemen-stok-umkm',
     tag: 'Panduan',
     title: 'Panduan Lengkap Manajemen Stok untuk UMKM Kuliner',
     excerpt: 'Stok habis di jam sibuk? Pelajari strategi manajemen inventaris yang terbukti efektif untuk bisnis kuliner skala kecil hingga menengah.',
@@ -27,6 +31,7 @@ const posts = [
     emoji: '📦',
   },
   {
+    slug: 'strategi-membuka-franchise-kuliner',
     tag: 'Franchise',
     title: 'Strategi Membuka Franchise Kuliner yang Sukses di 2026',
     excerpt: 'Dari standarisasi menu hingga kontrol kualitas multi-cabang — temukan rahasia brand franchise kuliner yang berhasil mengembangkan bisnis mereka.',
@@ -35,6 +40,7 @@ const posts = [
     emoji: '🏢',
   },
   {
+    slug: 'qris-vs-kartu-debit',
     tag: 'Teknologi',
     title: 'QRIS vs Kartu Debit: Mana yang Lebih Menguntungkan untuk Merchant?',
     excerpt: 'Analisis mendalam tentang biaya transaksi, kecepatan settlement, dan pengalaman pelanggan dari dua metode pembayaran populer saat ini.',
@@ -43,6 +49,7 @@ const posts = [
     emoji: '💳',
   },
   {
+    slug: 'cara-membaca-laporan-keuangan-restoran',
     tag: 'Tips Bisnis',
     title: 'Cara Membaca Laporan Keuangan Restoran untuk Pemula',
     excerpt: 'Tidak perlu menjadi akuntan — pahami laporan laba rugi, arus kas, dan neraca bisnis kuliner Anda dengan panduan sederhana ini.',
@@ -68,7 +75,11 @@ const Blog = () => (
             <span>📅 {post.date}</span>
             <span>⏱ {post.readTime}</span>
           </div>
-          <button className="btn-read">Baca Selengkapnya →</button>
+          {post.slug ? (
+            <Link to={`/blog/${post.slug}`} className="btn-read">Baca Selengkapnya →</Link>
+          ) : (
+            <button className="btn-read">Baca Selengkapnya →</button>
+          )}
         </article>
       ))}
     </div>

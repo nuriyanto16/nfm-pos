@@ -15,6 +15,7 @@ import 'features/menu/presentation/menu_management_screen.dart';
 import 'features/promo/presentation/promo_management_screen.dart';
 import 'features/supplier/presentation/supplier_management_screen.dart';
 import 'features/customer/presentation/customer_management_screen.dart';
+import 'features/customer/presentation/customer_user_screen.dart';
 import 'features/order/presentation/order_list_screen.dart';
 import 'features/branch/presentation/branch_management_screen.dart';
 import 'features/table/presentation/table_management_screen.dart';
@@ -104,6 +105,10 @@ final _router = GoRouter(
         GoRoute(
           path: '/customers',
           builder: (context, state) => const CustomerManagementScreen(),
+        ),
+        GoRoute(
+          path: '/customer-users',
+          builder: (context, state) => const CustomerUserScreen(),
         ),
         // Management routes
         GoRoute(

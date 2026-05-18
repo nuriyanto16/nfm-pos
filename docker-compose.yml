@@ -8,6 +8,7 @@ services:
       POSTGRES_USER: ${DB_USER:-pos_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-pos_password}
       POSTGRES_DB: ${DB_NAME:-pos_db}
+      TZ: Asia/Jakarta
     ports:
       - "5432:5432"
     volumes:
@@ -35,6 +36,7 @@ services:
       DB_PORT: 5432
       JWT_SECRET: ${JWT_SECRET:-supersecretkey_pos_2026}
       PORT: 8080
+      TZ: Asia/Jakarta
       CHATBOT_URL: http://openclaw:5000
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_TOKEN:-8514113935:AAGjt6N-j6BzAsuj7-GGtbytv13h63FTZxM}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-1144650479}
@@ -91,5 +93,18 @@ services:
     volumes:
       - ./openclaw:/openclaw/configuration/
       - ./openclaw/logs:/openclaw/configuration/logs
+
+  orderonline:
+    build:
+      context: ./orderonline
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${ORDERONLINE_API_URL:-/api}
+    container_name: pos_orderonline
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 # volumes section removed as no named volumes are being used.

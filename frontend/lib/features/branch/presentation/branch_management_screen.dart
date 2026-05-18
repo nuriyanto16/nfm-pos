@@ -149,6 +149,8 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
   final _addressCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _openTimeCtrl = TextEditingController(text: '08:00');
+  final _closeTimeCtrl = TextEditingController(text: '22:00');
   bool _isActive = true;
   bool _isSaving = false;
 
@@ -161,7 +163,38 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
       _addressCtrl.text = widget.branch!['address'] ?? '';
       _phoneCtrl.text = widget.branch!['phone'] ?? '';
       _emailCtrl.text = widget.branch!['email'] ?? '';
+      _openTimeCtrl.text = widget.branch!['open_time'] != null ? widget.branch!['open_time'].toString().substring(0, 5) : '08:00';
+      _closeTimeCtrl.text = widget.branch!['close_time'] != null ? widget.branch!['close_time'].toString().substring(0, 5) : '22:00';
       _isActive = widget.branch!['is_active'] ?? true;
+    }
+  }
+
+  Future<void> _selectTime(TextEditingController ctrl) async {
+    final parts = ctrl.text.split(':');
+    final initialTime = TimeOfDay(
+      hour: parts.length > 0 ? int.tryParse(parts[0]) ?? 8 : 8,
+      minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
+    );
+
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            timePickerTheme: TimePickerThemeData(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        ctrl.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      });
     }
   }
 
@@ -200,6 +233,36 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
                   decoration: const InputDecoration(labelText: 'Telepon', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _openTimeCtrl,
+                        readOnly: true,
+                        onTap: () => _selectTime(_openTimeCtrl),
+                        decoration: const InputDecoration(
+                          labelText: 'Jam Buka', 
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.access_time),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _closeTimeCtrl,
+                        readOnly: true,
+                        onTap: () => _selectTime(_closeTimeCtrl),
+                        decoration: const InputDecoration(
+                          labelText: 'Jam Tutup', 
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.access_time_filled),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 SwitchListTile(
                   title: const Text('Status Aktif'),
                   value: _isActive,
@@ -231,6 +294,8 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
         'address': _addressCtrl.text,
         'phone': _phoneCtrl.text,
         'email': _emailCtrl.text,
+        'open_time': _openTimeCtrl.text,
+        'close_time': _closeTimeCtrl.text,
         'is_active': _isActive,
       };
       if (widget.branch != null) {

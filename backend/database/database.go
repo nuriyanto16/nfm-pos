@@ -61,6 +61,7 @@ func ConnectDB() {
 		&models.GoodsIssue{},
 		&models.GoodsIssueItem{},
 		&models.TrialRegistration{},
+		&models.CustomerUser{},
 	}
 
 	for _, model := range modelsToMigrate {
@@ -149,6 +150,7 @@ func SeedSidebarMenus() {
 		{Title: "Laporan Penjualan", Path: "/reports/sales", Icon: "assessment", SortOrder: 63},
 		{Title: "Monitoring Stok", Path: "/inventory/stock-history", Icon: "history", SortOrder: 64},
 		{Title: "Registrasi Trial", Path: "/registrations", Icon: "app_registration", SortOrder: 45},
+		{Title: "User Registrasi Online", Path: "/customer-users", Icon: "group_add", SortOrder: 28},
 	}
 
 	for _, nm := range newMenus {

@@ -12,6 +12,7 @@ import WhatsAppFloat from './components/WhatsAppFloat';
 // Inner Pages
 import TentangKami from './pages/TentangKami';
 import Blog from './pages/Blog';
+import BlogDetail from './pages/BlogDetail';
 import PusatBantuan from './pages/PusatBantuan';
 import Kontak from './pages/Kontak';
 import KebijakanPrivasi from './pages/KebijakanPrivasi';
@@ -39,6 +40,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/tentang-kami" element={<TentangKami />} />
         <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:slug" element={<BlogDetail />} />
         <Route path="/pusat-bantuan" element={<PusatBantuan />} />
         <Route path="/kontak" element={<Kontak />} />
         <Route path="/kebijakan-privasi" element={<KebijakanPrivasi />} />

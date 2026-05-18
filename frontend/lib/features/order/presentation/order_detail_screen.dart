@@ -114,7 +114,7 @@ class OrderDetailScreen extends ConsumerWidget {
                             const SizedBox(height: 16),
                             _buildInfoCard(order, table, customer, user, colorScheme),
                             const SizedBox(height: 16),
-                            _buildSummaryCard(subtotal, discountAmount, taxAmount, serviceAmount, totalAmount, colorScheme),
+                            _buildSummaryCard(order, subtotal, discountAmount, taxAmount, serviceAmount, totalAmount, colorScheme),
                             const SizedBox(height: 16),
                             _buildActionButtons(context, ref, order, status, statusCol),
                           ],
@@ -135,7 +135,7 @@ class OrderDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     _buildItemList(items, colorScheme),
                     const SizedBox(height: 16),
-                    _buildSummaryCard(subtotal, discountAmount, taxAmount, serviceAmount, totalAmount, colorScheme),
+                    _buildSummaryCard(order, subtotal, discountAmount, taxAmount, serviceAmount, totalAmount, colorScheme),
                     const SizedBox(height: 16),
                     _buildActionButtons(context, ref, order, status, statusCol),
                     const SizedBox(height: 24),
@@ -213,10 +213,16 @@ class OrderDetailScreen extends ConsumerWidget {
           children: [
             const Text('Informasi Pesanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const Divider(height: 24),
-            _infoRow(Icons.table_restaurant, 'Meja',
-                table != null && table['id'] != null ? 'Meja ${table['table_number']}' : 'Take Away'),
+            _infoRow(Icons.source, 'Sumber', (order['order_source'] == 'Online') ? 'Online' : 'On The Spot Resto'),
+            _infoRow(Icons.table_restaurant, 'Meja / Tipe',
+                (order['order_source'] == 'Online') 
+                    ? 'Online (${order['delivery_method']})'
+                    : (table != null && table['id'] != null ? 'Meja ${table['table_number']}' : 'Take Away')),
             _infoRow(Icons.person, 'Pelanggan',
                 customer != null ? customer['name'] : (order['customer_name'] ?? 'Pelanggan Umum')),
+            _infoRow(Icons.payments, 'Pembayaran', order['payment_method'] ?? 'Tunai'),
+            if (order['delivery_method'] == 'Delivery' && order['shipping_address'] != null)
+                _infoRow(Icons.location_on, 'Alamat Kirim', order['shipping_address']),
             _infoRow(Icons.badge, 'Kasir',
                 user != null ? (user['full_name'] ?? user['username'] ?? '-') : '-'),
             if (order['notes'] != null && order['notes'].toString().isNotEmpty)
@@ -338,7 +344,7 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCard(double subtotal, double discount, double tax, double service, double total, ColorScheme cs) {
+  Widget _buildSummaryCard(Map<String, dynamic> order, double subtotal, double discount, double tax, double service, double total, ColorScheme cs) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -349,6 +355,8 @@ class OrderDetailScreen extends ConsumerWidget {
             const Divider(height: 24),
             _priceRow('Subtotal', subtotal),
             if (service > 0) _priceRow('Biaya Layanan', service),
+            if ((order['shipping_fee'] as num?)?.toDouble() != null && (order['shipping_fee'] as num) > 0)
+                _priceRow('Ongkos Kirim', (order['shipping_fee'] as num).toDouble()),
             if (discount > 0) _priceRow('Diskon', -discount, color: Colors.red),
             if (tax > 0) _priceRow('Pajak', tax),
             const Divider(height: 20),

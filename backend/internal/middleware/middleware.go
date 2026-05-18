@@ -41,6 +41,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			if userID, ok := claims["user_id"].(float64); ok {
 				c.Set("userID", uint(userID))
 			}
+			if customerUserID, ok := claims["customer_user_id"].(float64); ok {
+				c.Set("customerUserID", uint(customerUserID))
+			}
 			c.Set("role", claims["role"])
 			if branchID, exists := claims["branch_id"]; exists && branchID != nil {
 				c.Set("branchID", uint(branchID.(float64)))
@@ -90,11 +93,24 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 		}
 
 		// Executive and Admin can see everything within their company (all branches)
-		if strings.EqualFold(role, "Executive") || strings.EqualFold(role, "Admin") {
+		cleanRole := strings.TrimSpace(role)
+		if strings.EqualFold(cleanRole, "Executive") || strings.EqualFold(cleanRole, "Admin") {
 			return tx
 		}
 
 		// Others (Cashier, Kitchen, Manager) are strictly scoped to their branch
+		if strings.EqualFold(role, "Customer") {
+			customerUserID, exists := c.Get("customerUserID")
+			if exists {
+				if tableName != "" {
+					return tx.Where(fmt.Sprintf("%s.customer_user_id = ?", tableName), customerUserID)
+				}
+				return tx.Where("customer_user_id = ?", customerUserID)
+			}
+			// If somehow a customer token is used but customerUserID is missing, return empty
+			return tx.Where("1 = 0")
+		}
+
 		if branchExists && branchID != nil {
 			if tableName != "" {
 				// Allow branch-specific data OR company-wide master data (branch_id IS NULL)

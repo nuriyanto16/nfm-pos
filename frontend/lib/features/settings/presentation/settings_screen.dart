@@ -20,6 +20,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _waSenderController = TextEditingController();
   final _appNameController = TextEditingController();
   final _companyNameController = TextEditingController();
+  final _primaryColorController = TextEditingController();
+  final _secondaryColorController = TextEditingController();
   List<dynamic> _accounts = [];
   String? _accSalesId;
   String? _accCashId;
@@ -37,6 +39,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _waSenderController.dispose();
     _appNameController.dispose();
     _companyNameController.dispose();
+    _primaryColorController.dispose();
+    _secondaryColorController.dispose();
     super.dispose();
   }
 
@@ -80,6 +84,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _logoUrl = data['logo_url']?.toString();
         _appNameController.text = data['app_name']?.toString() ?? 'NFM POS';
         _companyNameController.text = data['company_name']?.toString() ?? 'NFM Technology';
+        _primaryColorController.text = data['primary_color']?.toString() ?? '#2E7D32';
+        _secondaryColorController.text = data['secondary_color']?.toString() ?? '#FFFFFF';
       });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat pengaturan: $e')));
@@ -102,6 +108,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         'logo_url': _logoUrl,
         'app_name': _appNameController.text,
         'company_name': _companyNameController.text,
+        'primary_color': _primaryColorController.text,
+        'secondary_color': _secondaryColorController.text,
       });
       if (mounted) {
         ref.invalidate(settingsProvider);
@@ -295,6 +303,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _buildColorDot(const Color(0xFF212121), 'Hitam', themeSettings.seedColor, themeNotifier),
                           _buildColorDot(const Color(0xFF4E342E), 'Coklat', themeSettings.seedColor, themeNotifier),
                           _buildColorDot(const Color(0xFF00796B), 'Hijau Mint', themeSettings.seedColor, themeNotifier),
+                        ],
+                      ),
+                      const Divider(height: 40),
+                      const Text('Order Online Theme (Custom Colors)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _primaryColorController,
+                              decoration: const InputDecoration(
+                                labelText: 'Primary Color (Hex)',
+                                hintText: '#RRGGBB',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _secondaryColorController,
+                              decoration: const InputDecoration(
+                                labelText: 'Secondary Color (Hex)',
+                                hintText: '#RRGGBB',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ],

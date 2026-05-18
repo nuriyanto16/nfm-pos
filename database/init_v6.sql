@@ -2,6 +2,8 @@
 -- POS Resto v6 — Optimized Schema with Full Indexing
 -- ============================================================
 
+SET timezone = 'Asia/Jakarta';
+
 -- 1. Core Tables
 CREATE TABLE IF NOT EXISTS companies (
     id SERIAL PRIMARY KEY,
@@ -24,6 +26,8 @@ CREATE TABLE IF NOT EXISTS branches (
     address TEXT,
     phone VARCHAR(20),
     email VARCHAR(100),
+    open_time TIME DEFAULT '08:00:00',
+    close_time TIME DEFAULT '22:00:00',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -477,7 +481,8 @@ INSERT INTO sidebar_menus (title, path, icon, sort_order, is_header) VALUES
 ('Sidebar Management', '/management/sidebar', 'menu_open', 44, FALSE),
 ('Monitoring Meja', '/monitoring-tables', 'monitor', 26, FALSE),
 ('Denah Meja', '/layout-tables', 'map', 27, FALSE),
-('Perusahaan', '/companies', 'corporate_fare', 110, FALSE);
+('Perusahaan', '/companies', 'corporate_fare', 110, FALSE),
+('User Registrasi Online', '/customer-users', 'group_add', 28, FALSE);
 
 -- Map all menus to Admin (Role ID 1)
 INSERT INTO role_menus (role_id, sidebar_menu_id)

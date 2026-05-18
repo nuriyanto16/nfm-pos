@@ -16,6 +16,7 @@ backend/backend_stderr.log
 backend/backend_stdout.log
 
 # Build artifacts
+*.exe
 backend/main.exe
 backend/tmp_build.exe
 frontend/build/

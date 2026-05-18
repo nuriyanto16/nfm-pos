@@ -46,6 +46,24 @@ func main() {
 	api.POST("/registrations", middleware.RateLimiter(5, 10*time.Minute), handlers.CreateRegistration)
 	api.POST("/registrations/:id/approve", handlers.ApproveRegistration)
 
+	// ─── Public API (Online Ordering – No Auth) ────────────────────────────────
+	public := api.Group("/public")
+	public.GET("/company/:code", handlers.PublicGetCompanyInfo)
+	public.GET("/company/:code/branches", handlers.PublicGetBranches)
+	public.GET("/menu/:branchId", handlers.PublicGetMenuByBranch)
+	public.POST("/orders", handlers.PublicCreateOrder)
+	public.GET("/orders/:id/status", handlers.PublicGetOrderStatus)
+	public.GET("/promos", handlers.PublicGetPromos)
+	public.POST("/register", handlers.PublicRegisterCustomer)
+	public.POST("/login", handlers.PublicLoginCustomer)
+
+	// Authenticated Public routes
+	publicAuth := public.Group("/")
+	publicAuth.Use(middleware.AuthMiddleware())
+	publicAuth.GET("/orders/history", handlers.PublicGetOrderHistory)
+	publicAuth.GET("/me", handlers.PublicGetCustomerMe)
+	publicAuth.POST("/authenticated-orders", handlers.PublicCreateOrder) // Same handler, but with auth
+
 	// Protected routes
 	protected := api.Group("/")
 	protected.Use(middleware.AuthMiddleware())
@@ -86,6 +104,12 @@ func main() {
 	protected.POST("/customers", handlers.CreateCustomer)
 	protected.PUT("/customers/:id", handlers.UpdateCustomer)
 	protected.DELETE("/customers/:id", handlers.DeleteCustomer)
+
+	// ─── Customer Users (App Registration) ────────────────────────────────────
+	protected.GET("/customer-users", handlers.GetCustomerUsers)
+	protected.POST("/customer-users", handlers.CreateCustomerUser)
+	protected.PUT("/customer-users/:id", handlers.UpdateCustomerUser)
+	protected.DELETE("/customer-users/:id", handlers.DeleteCustomerUser)
 
 	// ─── Dashboard ────────────────────────────────────────────────────────────
 	protected.GET("/dashboard/stats", handlers.GetDashboardStats)

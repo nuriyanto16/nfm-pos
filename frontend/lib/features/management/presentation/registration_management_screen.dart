@@ -68,6 +68,8 @@ class _RegistrationManagementScreenState extends ConsumerState<RegistrationManag
                       PopupMenuButton(
                         icon: const Icon(Icons.more_vert),
                         itemBuilder: (context) => <PopupMenuEntry>[
+                          const PopupMenuItem(value: 'approve', child: Text('✅ Setujui & Buat Akun', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+                          const PopupMenuDivider(),
                           const PopupMenuItem(value: 'Pending', child: Text('Set Pending')),
                           const PopupMenuItem(value: 'Contacted', child: Text('Set Hubungi')),
                           const PopupMenuItem(value: 'Trialing', child: Text('Set Sedang Trial')),
@@ -78,6 +80,8 @@ class _RegistrationManagementScreenState extends ConsumerState<RegistrationManag
                         onSelected: (val) {
                           if (val == 'delete') {
                             _deleteRegistration(reg['id']);
+                          } else if (val == 'approve') {
+                            _approveRegistration(reg['id']);
                           } else {
                             _updateStatus(reg['id'], val);
                           }
@@ -131,6 +135,53 @@ class _RegistrationManagementScreenState extends ConsumerState<RegistrationManag
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status diupdate ke $status')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<void> _approveRegistration(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Persetujuan'),
+        content: const Text('Sistem akan membuatkan akun Company, Branch, dan Admin User secara otomatis. Lanjutkan?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Setujui & Buat Akun')),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        final dio = ref.read(dioProvider);
+        final response = await dio.post('registrations/$id/approve');
+        ref.invalidate(registrationListProvider);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Berhasil!'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Akun berhasil dibuat untuk: ${response.data['company']}'),
+                  const SizedBox(height: 8),
+                  Text('Username: ${response.data['username']}'),
+                  Text('Password: ${response.data['password']}'),
+                  const SizedBox(height: 8),
+                  const Text('Detail akun telah dikirim ke WhatsApp user.', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
