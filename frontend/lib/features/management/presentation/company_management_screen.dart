@@ -113,6 +113,12 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
   late TextEditingController _codeCtrl;
   late TextEditingController _phoneCtrl;
   late TextEditingController _addressCtrl;
+  late TextEditingController _payWebhookCtrl;
+  late TextEditingController _payApiKeyCtrl;
+  late TextEditingController _courierWebhookCtrl;
+  late TextEditingController _courierApiKeyCtrl;
+  late TextEditingController _waWebhookCtrl;
+  late TextEditingController _waApiKeyCtrl;
   String? _logoUrl;
   bool _isUploading = false;
   bool _isSaving = false;
@@ -124,6 +130,12 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
     _codeCtrl = TextEditingController(text: widget.company?['code'] ?? '');
     _phoneCtrl = TextEditingController(text: widget.company?['phone'] ?? '');
     _addressCtrl = TextEditingController(text: widget.company?['address'] ?? '');
+    _payWebhookCtrl = TextEditingController(text: widget.company?['payment_gateway_webhook'] ?? '');
+    _payApiKeyCtrl = TextEditingController(text: widget.company?['payment_gateway_api_key'] ?? '');
+    _courierWebhookCtrl = TextEditingController(text: widget.company?['courier_webhook'] ?? '');
+    _courierApiKeyCtrl = TextEditingController(text: widget.company?['courier_api_key'] ?? '');
+    _waWebhookCtrl = TextEditingController(text: widget.company?['whatsapp_webhook'] ?? '');
+    _waApiKeyCtrl = TextEditingController(text: widget.company?['whatsapp_api_key'] ?? '');
     _logoUrl = widget.company?['logo_url'];
   }
 
@@ -197,6 +209,18 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
             TextField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Telepon', border: OutlineInputBorder())),
             const SizedBox(height: 12),
             TextField(controller: _addressCtrl, decoration: const InputDecoration(labelText: 'Alamat', border: OutlineInputBorder()), maxLines: 2),
+            const SizedBox(height: 12),
+            TextField(controller: _payWebhookCtrl, decoration: const InputDecoration(labelText: 'Webhook Payment Gateway', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: _payApiKeyCtrl, decoration: const InputDecoration(labelText: 'API Key Payment Gateway', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: _courierWebhookCtrl, decoration: const InputDecoration(labelText: 'Webhook Kurir', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: _courierApiKeyCtrl, decoration: const InputDecoration(labelText: 'API Key Kurir', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: _waWebhookCtrl, decoration: const InputDecoration(labelText: 'Webhook Whatsapp', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: _waApiKeyCtrl, decoration: const InputDecoration(labelText: 'API Key Whatsapp', border: OutlineInputBorder())),
           ],
         ),
       ),
@@ -221,6 +245,12 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
         'phone': _phoneCtrl.text,
         'address': _addressCtrl.text,
         'logo_url': _logoUrl,
+        'payment_gateway_webhook': _payWebhookCtrl.text,
+        'payment_gateway_api_key': _payApiKeyCtrl.text,
+        'courier_webhook': _courierWebhookCtrl.text,
+        'courier_api_key': _courierApiKeyCtrl.text,
+        'whatsapp_webhook': _waWebhookCtrl.text,
+        'whatsapp_api_key': _waApiKeyCtrl.text,
       };
       if (widget.company != null) {
         await dio.put('companies/${widget.company!['id']}', data: data);

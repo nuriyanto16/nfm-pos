@@ -32,6 +32,7 @@ func ConnectDB() {
 
 	// Auto Migrate per model to be more robust
 	modelsToMigrate := []interface{}{
+		&models.Company{},
 		&models.Role{},
 		&models.Branch{},
 		&models.User{},
