@@ -40,6 +40,17 @@
       </div>
 
       <div v-if="form.delivery_method === 'Delivery'" class="form-group">
+        <label class="form-label">Pilih Kurir Pengiriman *</label>
+        <select v-model="form.courier" class="form-select" id="checkout-courier">
+          <option value="Gojek">Gojek (Instant/Sameday) - Rp15.000</option>
+          <option value="Grab">Grab (Instant/Sameday) - Rp15.000</option>
+          <option value="Shopee Express">Shopee Express - Rp12.000</option>
+          <option value="Lalamove">Lalamove - Rp18.000</option>
+          <option value="Kurir Toko">Kurir Toko - Rp10.000</option>
+        </select>
+      </div>
+
+      <div v-if="form.delivery_method === 'Delivery'" class="form-group">
         <label class="form-label">Alamat Pengiriman *</label>
         <textarea v-model="form.shipping_address" class="form-textarea" placeholder="Alamat lengkap pengiriman..." id="checkout-address"></textarea>
       </div>
@@ -141,6 +152,7 @@ const form = ref({
   customer_name: '',
   customer_phone: '',
   delivery_method: 'Pickup',
+  courier: 'Gojek',
   payment_method: 'Tunai',
   shipping_address: '',
   notes: '',
@@ -231,7 +243,15 @@ function calculateDiscount() {
 }
 
 const shippingFee = computed(() => {
-  return form.value.delivery_method === 'Delivery' ? 10000 : 0
+  if (form.value.delivery_method !== 'Delivery') return 0
+  switch (form.value.courier) {
+    case 'Gojek': return 15000
+    case 'Grab': return 15000
+    case 'Shopee Express': return 12000
+    case 'Lalamove': return 18000
+    case 'Kurir Toko': return 10000
+    default: return 10000
+  }
 })
 
 function formatPrice(price) {
@@ -258,7 +278,9 @@ async function submitOrder() {
       branch_id: parseInt(props.branchId),
       customer_name: form.value.customer_name,
       customer_phone: form.value.customer_phone,
-      delivery_method: form.value.delivery_method,
+      delivery_method: form.value.delivery_method === 'Delivery'
+        ? `Delivery (${form.value.courier})`
+        : form.value.delivery_method,
       payment_method: form.value.payment_method,
       shipping_address: form.value.shipping_address,
       shipping_fee: shippingFee.value,

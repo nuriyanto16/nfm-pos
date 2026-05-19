@@ -335,7 +335,7 @@ input, textarea { font-family: var(--font); }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.4);
-  z-index: 300;
+  z-index: 600;
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -351,7 +351,7 @@ input, textarea { font-family: var(--font); }
   max-height: 85vh;
   background: var(--surface);
   border-radius: 20px 20px 0 0;
-  z-index: 301;
+  z-index: 601;
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;

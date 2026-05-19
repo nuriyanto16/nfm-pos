@@ -670,7 +670,7 @@ class _RecentOrdersTable extends StatelessWidget {
               _buildDataCell(Text(branchName, maxLines: 1, overflow: TextOverflow.ellipsis)),
               _buildDataCell(Text(
                 order['order_source'] == 'Online' 
-                  ? (order['delivery_method'] == 'Delivery' ? 'Online (D)' : 'Online (P)')
+                  ? (order['delivery_method']?.toString().startsWith('Delivery') == true ? 'Online (D)' : 'Online (P)')
                   : (order['table'] != null ? 'T.${order['table']['table_number']}' : 'TA')
               )),
               _buildDataCell(Text(order['customer_name'] ?? 'Guest', maxLines: 1, overflow: TextOverflow.ellipsis)),

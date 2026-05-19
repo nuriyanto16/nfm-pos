@@ -221,7 +221,7 @@ class OrderDetailScreen extends ConsumerWidget {
             _infoRow(Icons.person, 'Pelanggan',
                 customer != null ? customer['name'] : (order['customer_name'] ?? 'Pelanggan Umum')),
             _infoRow(Icons.payments, 'Pembayaran', order['payment_method'] ?? 'Tunai'),
-            if (order['delivery_method'] == 'Delivery' && order['shipping_address'] != null)
+            if (order['delivery_method']?.toString().startsWith('Delivery') == true && order['shipping_address'] != null)
                 _infoRow(Icons.location_on, 'Alamat Kirim', order['shipping_address']),
             _infoRow(Icons.badge, 'Kasir',
                 user != null ? (user['full_name'] ?? user['username'] ?? '-') : '-'),
