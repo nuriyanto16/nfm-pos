@@ -54,7 +54,40 @@ class _CustomerUserScreenState extends ConsumerState<CustomerUserScreen> {
                     child: const Icon(Icons.person, color: Colors.white),
                   ),
                   title: Text(user['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${user['username']} • ${user['phone'] ?? '-'}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${user['username']} • ${user['phone'] ?? '-'}'),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Poin: ${user['customer']?['loyalty_points'] ?? 0}',
+                              style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Promo: ${user['customer']?['personal_promo_type'] == 'percentage' ? "${user['customer']?['personal_promo_value']}%" : (user['customer']?['personal_promo_type'] == 'flat' ? "${user['customer']?['personal_promo_value']}" : "Tidak Ada")}',
+                              style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -100,6 +133,12 @@ class _CustomerUserScreenState extends ConsumerState<CustomerUserScreen> {
     final passwordController = TextEditingController();
     bool isActive = isEdit ? user['is_active'] : true;
 
+    final customer = isEdit ? user['customer'] : null;
+    final loyaltyPointsController = TextEditingController(text: customer != null ? (customer['loyalty_points'] ?? 0).toString() : '0');
+    final personalPromoValueController = TextEditingController(text: customer != null ? (customer['personal_promo_value'] ?? 0.0).toString() : '0');
+    String personalPromoType = (customer != null && customer['personal_promo_type'] != null) ? customer['personal_promo_type'] : '';
+    bool isGlobalPromoEnabled = customer != null ? (customer['is_global_promo_enabled'] ?? true) : true;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -138,6 +177,42 @@ class _CustomerUserScreenState extends ConsumerState<CustomerUserScreen> {
                   value: isActive,
                   onChanged: (val) => setState(() => isActive = val),
                 ),
+                const Divider(),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Pengaturan Promo & Point', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: loyaltyPointsController,
+                  decoration: const InputDecoration(labelText: 'Point Loyalty'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: personalPromoType,
+                  decoration: const InputDecoration(labelText: 'Tipe Promo Personal'),
+                  items: const [
+                    DropdownMenuItem(value: '', child: Text('Tidak Ada')),
+                    DropdownMenuItem(value: 'percentage', child: Text('Persentase (%)')),
+                    DropdownMenuItem(value: 'flat', child: Text('Potongan Tetap (Nominal)')),
+                  ],
+                  onChanged: (val) {
+                    setState(() => personalPromoType = val ?? '');
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: personalPromoValueController,
+                  decoration: const InputDecoration(labelText: 'Nilai Promo Personal'),
+                  keyboardType: TextInputType.number,
+                ),
+                SwitchListTile(
+                  title: const Text('Aktifkan Promo Global'),
+                  subtitle: const Text('Apakah user ini bisa menggunakan promo umum'),
+                  value: isGlobalPromoEnabled,
+                  onChanged: (val) => setState(() => isGlobalPromoEnabled = val),
+                ),
               ],
             ),
           ),
@@ -152,6 +227,10 @@ class _CustomerUserScreenState extends ConsumerState<CustomerUserScreen> {
                   'email': emailController.text,
                   'phone': phoneController.text,
                   'is_active': isActive,
+                  'loyalty_points': int.tryParse(loyaltyPointsController.text) ?? 0,
+                  'personal_promo_type': personalPromoType,
+                  'personal_promo_value': double.tryParse(personalPromoValueController.text) ?? 0.0,
+                  'is_global_promo_enabled': isGlobalPromoEnabled,
                 };
                 if (passwordController.text.isNotEmpty) {
                   data['password'] = passwordController.text;

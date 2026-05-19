@@ -145,18 +145,21 @@ type Supplier struct {
 // ─── Customer ─────────────────────────────────────────────────────────────────
 
 type Customer struct {
-	ID             uint      `gorm:"primaryKey" json:"id"`
-	CompanyID      uint      `json:"company_id"`
-	BranchID       *uint     `json:"branch_id"`
-	Name           string    `gorm:"not null;type:varchar(100)" json:"name"`
-	Phone          string    `gorm:"type:varchar(20)" json:"phone"`
-	Email          string    `gorm:"type:varchar(100)" json:"email"`
-	Address        string    `json:"address"`
-	LoyaltyPoints  int       `gorm:"default:0" json:"loyalty_points"`
-	TotalSpent     float64   `gorm:"default:0" json:"total_spent"`
-	Tier           string    `gorm:"default:'Bronze';type:varchar(20)" json:"tier"` // Bronze, Silver, Gold
-	IsSendWA       bool      `gorm:"default:false" json:"is_send_wa"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID                   uint      `gorm:"primaryKey" json:"id"`
+	CompanyID            uint      `json:"company_id"`
+	BranchID             *uint     `json:"branch_id"`
+	Name                 string    `gorm:"not null;type:varchar(100)" json:"name"`
+	Phone                string    `gorm:"type:varchar(20)" json:"phone"`
+	Email                string    `gorm:"type:varchar(100)" json:"email"`
+	Address              string    `json:"address"`
+	LoyaltyPoints        int       `gorm:"default:0" json:"loyalty_points"`
+	TotalSpent           float64   `gorm:"default:0" json:"total_spent"`
+	Tier                 string    `gorm:"default:'Bronze';type:varchar(20)" json:"tier"` // Bronze, Silver, Gold
+	IsSendWA             bool      `gorm:"default:false" json:"is_send_wa"`
+	PersonalPromoType    string    `gorm:"default:'';type:varchar(20)" json:"personal_promo_type"` // percentage, flat, or empty
+	PersonalPromoValue   float64   `gorm:"default:0" json:"personal_promo_value"`
+	IsGlobalPromoEnabled bool      `gorm:"default:true" json:"is_global_promo_enabled"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 type CustomerUser struct {

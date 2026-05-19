@@ -19,11 +19,15 @@ func GetCustomerUsers(c *gin.Context) {
 func CreateCustomerUser(c *gin.Context) {
 	companyID, _ := c.Get("companyID")
 	var input struct {
-		Username string `json:"username" binding:"required"`
-		Password string `json:"password" binding:"required"`
-		FullName string `json:"full_name" binding:"required"`
-		Email    string `json:"email"`
-		Phone    string `json:"phone"`
+		Username             string  `json:"username" binding:"required"`
+		Password             string  `json:"password" binding:"required"`
+		FullName             string  `json:"full_name" binding:"required"`
+		Email                string  `json:"email"`
+		Phone                string  `json:"phone"`
+		LoyaltyPoints        int     `json:"loyalty_points"`
+		PersonalPromoType    string  `json:"personal_promo_type"`
+		PersonalPromoValue   float64 `json:"personal_promo_value"`
+		IsGlobalPromoEnabled *bool   `json:"is_global_promo_enabled"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -33,8 +37,30 @@ func CreateCustomerUser(c *gin.Context) {
 
 	hash, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 
+	isGlobal := true
+	if input.IsGlobalPromoEnabled != nil {
+		isGlobal = *input.IsGlobalPromoEnabled
+	}
+
+	customer := models.Customer{
+		CompanyID:            companyID.(uint),
+		Name:                 input.FullName,
+		Email:                input.Email,
+		Phone:                input.Phone,
+		LoyaltyPoints:        input.LoyaltyPoints,
+		PersonalPromoType:    input.PersonalPromoType,
+		PersonalPromoValue:   input.PersonalPromoValue,
+		IsGlobalPromoEnabled: isGlobal,
+	}
+
+	if err := database.DB.Create(&customer).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat customer: " + err.Error()})
+		return
+	}
+
 	user := models.CustomerUser{
 		CompanyID:    companyID.(uint),
+		CustomerID:   &customer.ID,
 		Username:     input.Username,
 		PasswordHash: string(hash),
 		FullName:     input.FullName,
@@ -48,6 +74,7 @@ func CreateCustomerUser(c *gin.Context) {
 		return
 	}
 
+	user.Customer = &customer
 	c.JSON(http.StatusCreated, user)
 }
 
@@ -56,17 +83,21 @@ func UpdateCustomerUser(c *gin.Context) {
 	companyID, _ := c.Get("companyID")
 
 	var user models.CustomerUser
-	if err := database.DB.Where("id = ? AND company_id = ?", id, companyID).First(&user).Error; err != nil {
+	if err := database.DB.Where("id = ? AND company_id = ?", id, companyID).Preload("Customer").First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
 		return
 	}
 
 	var input struct {
-		FullName string `json:"full_name"`
-		Email    string `json:"email"`
-		Phone    string `json:"phone"`
-		IsActive bool   `json:"is_active"`
-		Password string `json:"password"`
+		FullName             string  `json:"full_name"`
+		Email                string  `json:"email"`
+		Phone                string  `json:"phone"`
+		IsActive             bool    `json:"is_active"`
+		Password             string  `json:"password"`
+		LoyaltyPoints        int     `json:"loyalty_points"`
+		PersonalPromoType    string  `json:"personal_promo_type"`
+		PersonalPromoValue   float64 `json:"personal_promo_value"`
+		IsGlobalPromoEnabled *bool   `json:"is_global_promo_enabled"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -82,6 +113,41 @@ func UpdateCustomerUser(c *gin.Context) {
 	if input.Password != "" {
 		hash, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 		user.PasswordHash = string(hash)
+	}
+
+	if user.CustomerID != nil {
+		var customer models.Customer
+		if err := database.DB.First(&customer, *user.CustomerID).Error; err == nil {
+			customer.Name = input.FullName
+			customer.Email = input.Email
+			customer.Phone = input.Phone
+			customer.LoyaltyPoints = input.LoyaltyPoints
+			customer.PersonalPromoType = input.PersonalPromoType
+			customer.PersonalPromoValue = input.PersonalPromoValue
+			if input.IsGlobalPromoEnabled != nil {
+				customer.IsGlobalPromoEnabled = *input.IsGlobalPromoEnabled
+			}
+			database.DB.Save(&customer)
+			user.Customer = &customer
+		}
+	} else {
+		isGlobal := true
+		if input.IsGlobalPromoEnabled != nil {
+			isGlobal = *input.IsGlobalPromoEnabled
+		}
+		customer := models.Customer{
+			CompanyID:            companyID.(uint),
+			Name:                 input.FullName,
+			Email:                input.Email,
+			Phone:                input.Phone,
+			LoyaltyPoints:        input.LoyaltyPoints,
+			PersonalPromoType:    input.PersonalPromoType,
+			PersonalPromoValue:   input.PersonalPromoValue,
+			IsGlobalPromoEnabled: isGlobal,
+		}
+		database.DB.Create(&customer)
+		user.CustomerID = &customer.ID
+		user.Customer = &customer
 	}
 
 	database.DB.Save(&user)

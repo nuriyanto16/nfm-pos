@@ -112,6 +112,10 @@
           <span>Promo ({{ selectedPromo?.name }})</span>
           <span>- {{ formatPrice(discountAmount) }}</span>
         </div>
+        <div v-if="personalDiscountAmount > 0" class="checkout-summary-row" style="color: var(--success);">
+          <span>Promo Personal</span>
+          <span>- {{ formatPrice(personalDiscountAmount) }}</span>
+        </div>
         <div v-if="pointsDiscount > 0" class="checkout-summary-row" style="color: var(--success);">
           <span>Tukar Koin ({{ maxUsablePoints }} koin)</span>
           <span>- {{ formatPrice(pointsDiscount) }}</span>
@@ -160,10 +164,23 @@ const form = ref({
   use_points: false,
 })
 
+const personalDiscountAmount = computed(() => {
+  if (!customerUser.value || !customerUser.value.customer) return 0
+  const cust = customerUser.value.customer
+  if (!cust.personal_promo_type || !cust.personal_promo_value) return 0
+  
+  if (cust.personal_promo_type === 'percentage') {
+    return cartSubtotal.value * (cust.personal_promo_value / 100)
+  } else if (cust.personal_promo_type === 'flat') {
+    return cust.personal_promo_value
+  }
+  return 0
+})
+
 const maxUsablePoints = computed(() => {
     if (!customerUser.value || !customerUser.value.customer) return 0
     const points = customerUser.value.customer.loyalty_points || 0
-    const totalAfterPromo = cartSubtotal.value - discountAmount.value
+    const totalAfterPromo = cartSubtotal.value - discountAmount.value - personalDiscountAmount.value
     return Math.min(points, Math.max(0, totalAfterPromo))
 })
 
@@ -172,7 +189,7 @@ const pointsDiscount = computed(() => {
 })
 
 const finalTotal = computed(() => {
-    return cartSubtotal.value + shippingFee.value - discountAmount.value - pointsDiscount.value
+    return cartSubtotal.value + shippingFee.value - discountAmount.value - personalDiscountAmount.value - pointsDiscount.value
 })
 
 onMounted(async () => {
@@ -201,7 +218,11 @@ onMounted(async () => {
     }
     
     const promosData = await api.getPromos(branchesData.company.id)
-    availablePromos.value = promosData || []
+    if (customerUser.value && customerUser.value.customer && customerUser.value.customer.is_global_promo_enabled === false) {
+      availablePromos.value = []
+    } else {
+      availablePromos.value = promosData || []
+    }
   } catch (e) {
     console.error('Failed to load company info or promos', e)
   }

@@ -57,12 +57,21 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    // We need companyId to get promos. We'll fetch it from branchSelect data or similar.
-    // For simplicity, let's assume we can get it from the branch list or a separate call.
+    const userStr = localStorage.getItem('customer_user')
+    let user = null
+    if (userStr) {
+      user = JSON.parse(userStr)
+    }
+
     const companyData = await api.getBranches(props.companyCode)
     const companyId = companyData.company.id
     const data = await api.getPromos(companyId)
-    promos.value = data || []
+    
+    if (user && user.customer && user.customer.is_global_promo_enabled === false) {
+      promos.value = []
+    } else {
+      promos.value = data || []
+    }
     promoCount.value = promos.value.length
   } catch (e) {
     console.error('Failed to load promos in bottom nav', e)

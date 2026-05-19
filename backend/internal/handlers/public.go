@@ -278,8 +278,23 @@ func PublicCreateOrder(c *gin.Context) {
 	serviceCharge := total * servicePct
 	tax := (total + serviceCharge) * taxPct
 
+	// Check if global promo is enabled for this customer, and calculate personal promo
+	isGlobalEnabled := true
+	personalDiscount := 0.0
+	if finalCustomerUserID != nil {
+		var cUser models.CustomerUser
+		if err := database.DB.Preload("Customer").First(&cUser, *finalCustomerUserID).Error; err == nil && cUser.Customer != nil {
+			isGlobalEnabled = cUser.Customer.IsGlobalPromoEnabled
+			if cUser.Customer.PersonalPromoType == "percentage" {
+				personalDiscount = total * (cUser.Customer.PersonalPromoValue / 100)
+			} else if cUser.Customer.PersonalPromoType == "flat" {
+				personalDiscount = cUser.Customer.PersonalPromoValue
+			}
+		}
+	}
+
 	discount := 0.0
-	if req.PromoID != nil {
+	if req.PromoID != nil && isGlobalEnabled {
 		var promo models.Promo
 		if err := database.DB.First(&promo, req.PromoID).Error; err == nil {
 			if promo.IsActive && time.Now().After(promo.StartDate) && time.Now().Before(promo.EndDate) {
@@ -305,7 +320,10 @@ func PublicCreateOrder(c *gin.Context) {
 		if err := database.DB.Preload("Customer").First(&cUser, *finalCustomerUserID).Error; err == nil && cUser.Customer != nil {
 			availablePoints := cUser.Customer.LoyaltyPoints
 			// Conversion: 1 point = Rp 1
-			maxPointsUsable := int(total - discount)
+			maxPointsUsable := int(total - discount - personalDiscount)
+			if maxPointsUsable < 0 {
+				maxPointsUsable = 0
+			}
 			if availablePoints > maxPointsUsable {
 				pointsToDeduct = maxPointsUsable
 			} else {
@@ -334,10 +352,10 @@ func PublicCreateOrder(c *gin.Context) {
 		UserID:              userID,
 		CustomerName:        req.CustomerName,
 		Status:              "Pending",
-		TotalAmount:         total + tax + serviceCharge + req.ShippingFee - discount - pointsDiscount,
+		TotalAmount:         total + tax + serviceCharge + req.ShippingFee - discount - personalDiscount - pointsDiscount,
 		TaxAmount:           tax,
 		ServiceChargeAmount: serviceCharge,
-		DiscountAmount:      discount + pointsDiscount,
+		DiscountAmount:      discount + personalDiscount + pointsDiscount,
 		ShippingFee:         req.ShippingFee,
 		PromoID:             req.PromoID,
 		Notes:               req.Notes,
