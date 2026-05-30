@@ -5,7 +5,7 @@ const Hero = () => {
     <section className="hero gradient-bg">
       <div className="container hero-content animate-fade-in">
         <div className="hero-text">
-          <span className="badge">✨ Solusi Bisnis No. 1</span>
+          <span className="badge">✨ Next Future Machine - Solusi Bisnis No. 1</span>
           <h1>Kelola Bisnis Lebih Mudah dengan <span className="gradient-text">NFM POS</span></h1>
           <p>Solusi kasir pintar yang fleksibel untuk skala apa pun. Mulai dari satu gerai UMKM hingga ratusan cabang jaringan Franchise, kami siap mendukung operasional Anda.</p>
           <div className="hero-actions">

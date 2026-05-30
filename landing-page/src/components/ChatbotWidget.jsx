@@ -9,9 +9,34 @@ const COOLDOWN_MS = 5000; // 5 detik antar pesan
 
 const ChatbotWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { from: 'bot', text: 'Halo! 👋 Saya NFM Assistant. Ada yang bisa saya bantu seputar NFM POS?' }
-  ]);
+  const [userInfo, setUserInfo] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nfm_chat_user');
+      return saved ? JSON.parse(saved) : { name: '', contact: '' };
+    } catch {
+      return { name: '', contact: '' };
+    }
+  });
+  const [isChatStarted, setIsChatStarted] = useState(() => {
+    try {
+      return !!localStorage.getItem('nfm_chat_started');
+    } catch {
+      return false;
+    }
+  });
+
+  const [messages, setMessages] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('nfm_chat_user');
+      const name = savedUser ? JSON.parse(savedUser).name : '';
+      const greeting = name 
+        ? `Halo ${name}! 👋 Saya NFM Assistant. Ada yang bisa saya bantu seputar NFM POS?`
+        : 'Halo! 👋 Saya NFM Assistant. Ada yang bisa saya bantu seputar NFM POS?';
+      return [{ from: 'bot', text: greeting }];
+    } catch {
+      return [{ from: 'bot', text: 'Halo! 👋 Saya NFM Assistant. Ada yang bisa saya bantu seputar NFM POS?' }];
+    }
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chatToken, setChatToken] = useState(null);
@@ -22,6 +47,18 @@ const ChatbotWidget = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const cooldownRef = useRef(null);
+
+  const handleStartChat = (e) => {
+    e.preventDefault();
+    if (userInfo.name.trim() && userInfo.contact.trim()) {
+      localStorage.setItem('nfm_chat_user', JSON.stringify(userInfo));
+      localStorage.setItem('nfm_chat_started', 'true');
+      setIsChatStarted(true);
+      setMessages([
+        { from: 'bot', text: `Halo ${userInfo.name}! 👋 Saya NFM Assistant. Ada yang bisa saya bantu seputar NFM POS?` }
+      ]);
+    }
+  };
 
   // ── Fetch session token on mount ──────────────────────────────────────────
   const fetchToken = useCallback(async () => {
@@ -99,7 +136,7 @@ const ChatbotWidget = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          user_name: 'Web Visitor',
+          user_name: `${userInfo.name} (${userInfo.contact})`,
           chat_token: chatToken || '',
         }),
       });
@@ -155,66 +192,103 @@ const ChatbotWidget = () => {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="chatbot-messages">
-          {messages.map((msg, i) => (
-            <div key={i} className={`chatbot-msg ${msg.from}`}>
-              {msg.from === 'bot' && <div className="chatbot-msg-avatar">🤖</div>}
-              <div className="chatbot-bubble">{msg.text}</div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="chatbot-msg bot">
-              <div className="chatbot-msg-avatar">🤖</div>
-              <div className="chatbot-bubble typing">
-                <span></span><span></span><span></span>
+        {/* Form or Chat body */}
+        {!isChatStarted ? (
+          <div className="chatbot-start-form">
+            <h3>Mulai Percakapan</h3>
+            <p>Silakan isi data Anda untuk memulai konsultasi dengan NFM Assistant.</p>
+            <form onSubmit={handleStartChat}>
+              <div className="form-group">
+                <label htmlFor="chat-name">Nama Lengkap</label>
+                <input
+                  id="chat-name"
+                  type="text"
+                  required
+                  placeholder="Nama lengkap Anda"
+                  value={userInfo.name}
+                  onChange={(e) => setUserInfo(prev => ({ ...prev, name: e.target.value }))}
+                />
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Quick Replies */}
-        {messages.length <= 1 && !sessionBlocked && (
-          <div className="chatbot-quick">
-            {quickReplies.map((q) => (
-              <button key={q} className="chatbot-quick-btn"
-                onClick={() => sendMessage(q)}>{q}</button>
-            ))}
+              <div className="form-group">
+                <label htmlFor="chat-contact">Email / No. WhatsApp</label>
+                <input
+                  id="chat-contact"
+                  type="text"
+                  required
+                  placeholder="Contoh: 0812345678 atau email@anda.com"
+                  value={userInfo.contact}
+                  onChange={(e) => setUserInfo(prev => ({ ...prev, contact: e.target.value }))}
+                />
+              </div>
+              <button type="submit" className="btn-start-chat">
+                Mulai Chatting
+              </button>
+            </form>
           </div>
+        ) : (
+          <>
+            {/* Messages */}
+            <div className="chatbot-messages">
+              {messages.map((msg, i) => (
+                <div key={i} className={`chatbot-msg ${msg.from}`}>
+                  {msg.from === 'bot' && <div className="chatbot-msg-avatar">🤖</div>}
+                  <div className="chatbot-bubble">{msg.text}</div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="chatbot-msg bot">
+                  <div className="chatbot-msg-avatar">🤖</div>
+                  <div className="chatbot-bubble typing">
+                    <span></span><span></span><span></span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Quick Replies */}
+            {messages.length <= 1 && !sessionBlocked && (
+              <div className="chatbot-quick">
+                {quickReplies.map((q) => (
+                  <button key={q} className="chatbot-quick-btn"
+                    onClick={() => sendMessage(q)}>{q}</button>
+                ))}
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="chatbot-input-row">
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder={
+                  sessionBlocked ? 'Sesi berakhir — muat ulang halaman'
+                  : isThrottled ? `Tunggu ${cooldownLeft}d...`
+                  : 'Ketik pertanyaan Anda...'
+                }
+                value={input}
+                onChange={(e) => setInput(e.target.value.slice(0, 500))}
+                onKeyDown={handleKeyDown}
+                className="chatbot-input"
+                disabled={sessionBlocked}
+                maxLength={500}
+              />
+              <button
+                className="chatbot-send"
+                onClick={() => sendMessage()}
+                disabled={!canSend}
+                title={isThrottled ? `Tunggu ${cooldownLeft} detik` : 'Kirim pesan'}
+              >
+                {isThrottled ? cooldownLeft : '➤'}
+              </button>
+            </div>
+
+            {/* Rate limit hint */}
+            <div className="chatbot-hint">
+              🔒 Maks 5 pesan/menit · {MAX_MESSAGES_PER_SESSION} pesan/sesi
+            </div>
+          </>
         )}
-
-        {/* Input */}
-        <div className="chatbot-input-row">
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder={
-              sessionBlocked ? 'Sesi berakhir — muat ulang halaman'
-              : isThrottled ? `Tunggu ${cooldownLeft}d...`
-              : 'Ketik pertanyaan Anda...'
-            }
-            value={input}
-            onChange={(e) => setInput(e.target.value.slice(0, 500))}
-            onKeyDown={handleKeyDown}
-            className="chatbot-input"
-            disabled={sessionBlocked}
-            maxLength={500}
-          />
-          <button
-            className="chatbot-send"
-            onClick={() => sendMessage()}
-            disabled={!canSend}
-            title={isThrottled ? `Tunggu ${cooldownLeft} detik` : 'Kirim pesan'}
-          >
-            {isThrottled ? cooldownLeft : '➤'}
-          </button>
-        </div>
-
-        {/* Rate limit hint */}
-        <div className="chatbot-hint">
-          🔒 Maks 5 pesan/menit · {MAX_MESSAGES_PER_SESSION} pesan/sesi
-        </div>
       </div>
 
       {/* ── FAB ─────────────────────────────────────────────────────────── */}
@@ -447,6 +521,83 @@ const ChatbotWidget = () => {
           background: #1e293b;
           text-align: center;
           flex-shrink: 0;
+        }
+
+        /* ─── Start Chat Form ─────────────────────────────────── */
+        .chatbot-start-form {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 2rem 1.5rem;
+          background: #0f172a;
+          color: white;
+        }
+        .chatbot-start-form h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          text-align: center;
+          background: linear-gradient(135deg, #fff, #94a3b8);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .chatbot-start-form p {
+          font-size: 0.8rem;
+          color: #94a3b8;
+          text-align: center;
+          margin-bottom: 1.5rem;
+          line-height: 1.4;
+        }
+        .chatbot-start-form .form-group {
+          margin-bottom: 1.2rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+          text-align: left;
+        }
+        .chatbot-start-form label {
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .chatbot-start-form input {
+          background: #1e293b;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 10px 12px;
+          color: white;
+          font-family: inherit;
+          font-size: 0.85rem;
+          outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .chatbot-start-form input:focus {
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        .chatbot-start-form input::placeholder {
+          color: #475569;
+        }
+        .btn-start-chat {
+          width: 100%;
+          background: linear-gradient(135deg, var(--primary), #3b82f6);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          padding: 12px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-top: 0.8rem;
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+        .btn-start-chat:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
         }
 
         @media (max-width: 480px) {

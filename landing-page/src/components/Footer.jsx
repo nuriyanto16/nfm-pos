@@ -9,7 +9,10 @@ const Footer = () => {
           <div className="footer-brand">
             <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
               <span className="logo-icon">🚀</span>
-              <span className="logo-text">NFM<span className="gradient-text">POS</span></span>
+              <div className="logo-brand">
+                <span className="logo-text">NFM<span className="gradient-text">POS</span></span>
+                <span className="logo-subtitle">Next Future Machine</span>
+              </div>
             </Link>
             <p>Solusi manajemen bisnis terpercaya dari UMKM hingga jaringan Franchise di seluruh Indonesia.</p>
           </div>
@@ -40,6 +43,28 @@ const Footer = () => {
           background: var(--muted);
           padding: 6rem 0 3rem;
           margin-top: 4rem;
+        }
+        .logo {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .logo-brand {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          line-height: 1.1;
+        }
+        .logo-text {
+          font-size: 1.5rem;
+          font-weight: 800;
+        }
+        .logo-subtitle {
+          font-size: 0.6rem;
+          font-weight: 600;
+          color: var(--muted-foreground);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
         }
         .footer-grid {
           display: grid;

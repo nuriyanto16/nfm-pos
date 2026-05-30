@@ -17,7 +17,10 @@ const Navbar = () => {
       <div className="container nav-content">
         <Link to="/" className="logo">
           <span className="logo-icon">🚀</span>
-          <span className="logo-text">NFM<span className="gradient-text">POS</span></span>
+          <div className="logo-brand">
+            <span className="logo-text">NFM<span className="gradient-text">POS</span></span>
+            <span className="logo-subtitle">Next Future Machine</span>
+          </div>
         </Link>
         <div className="nav-links">
           <a href="/#features">Fitur</a>
@@ -50,10 +53,25 @@ const Navbar = () => {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          font-size: 1.5rem;
-          font-weight: 800;
           text-decoration: none;
           color: inherit;
+        }
+        .logo-brand {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          line-height: 1.1;
+        }
+        .logo-text {
+          font-size: 1.5rem;
+          font-weight: 800;
+        }
+        .logo-subtitle {
+          font-size: 0.6rem;
+          font-weight: 600;
+          color: var(--muted-foreground);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
         }
         .nav-links {
           display: flex;

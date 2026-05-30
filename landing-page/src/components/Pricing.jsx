@@ -12,7 +12,7 @@ const Pricing = () => {
     },
     {
       name: 'Bisnis',
-      price: 'Rp 199rb',
+      price: 'Rp 149rb',
       period: 'per bulan',
       features: ['Transaksi Unlimited', 'Manajemen Stok Lanjut', '2 Akun Admin', 'Multi Cabang (2)', 'Support 24/7'],
       recommended: true,

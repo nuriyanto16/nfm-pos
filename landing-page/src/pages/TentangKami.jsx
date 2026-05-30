@@ -12,7 +12,7 @@ const TentangKami = () => (
           <div className="about-text">
             <h2>Siapa Kami?</h2>
             <p>
-              NFM POS adalah platform manajemen bisnis berbasis cloud yang dirancang khusus untuk memenuhi
+              <strong>NFM POS (Next Future Machine POS)</strong> adalah platform manajemen bisnis berbasis cloud yang dirancang khusus untuk memenuhi
               kebutuhan pelaku usaha Indonesia — mulai dari warung sederhana, kafe, restoran, hingga jaringan
               franchise dengan ratusan cabang.
             </p>
