@@ -666,6 +666,7 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -773,6 +774,7 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
   }
 
   Widget _buildRightPaneSection({required String title, required List<Widget> children}) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -787,6 +789,7 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
   }
 
   Widget _buildRightPaneRow(String label, String value, {bool isBoldValue = false, Color? valueColor, bool isCode = false}) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
