@@ -135,100 +135,180 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: theme.appBarTheme.backgroundColor ?? theme.cardColor,
-        title: Row(
+        backgroundColor: Colors.transparent,
+        iconTheme: IconThemeData(color: theme.textTheme.bodyLarge?.color),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'CONVERSATION LOG',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: theme.primaryColor,
-                  letterSpacing: 0.5,
+            // TOP HEADER SECTION (Full Width)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'CONVERSATION LOG',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: theme.primaryColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'History Chat',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: theme.textTheme.headlineLarge?.color ?? const Color(0xFF1E293B),
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pantau log pesan user, respon asisten AI, kesesuaian jawaban, serta analisis token per sesi percakapan.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                ElevatedButton.icon(
+                  onPressed: () => _fetchPage(_currentPage),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Refresh Data'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primaryColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // MAIN PANELS SECTION (3-Columns)
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktop = constraints.maxWidth >= 1100;
+                  final isTablet = constraints.maxWidth >= 720 && constraints.maxWidth < 1100;
+
+                  if (_isLoading && _logs.isEmpty) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6)));
+                  }
+
+                  if (_error != null && _logs.isEmpty) {
+                    return _buildErrorWidget(theme);
+                  }
+
+                  if (isDesktop) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Left Panel (List & search)
+                        Container(
+                          width: 330,
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.dividerColor.withOpacity(0.15)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: _buildLeftPane(theme, isDark),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Middle Panel (Chat detail)
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: theme.dividerColor.withOpacity(0.15)),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: _buildMiddlePane(theme, isDark),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Right Panel (Stats details)
+                        Container(
+                          width: 310,
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.dividerColor.withOpacity(0.15)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: _buildRightPane(theme, isDark),
+                          ),
+                        ),
+                      ],
+                    );
+                  } else if (isTablet) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          width: 320,
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.dividerColor.withOpacity(0.15)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: _buildLeftPane(theme, isDark),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: theme.dividerColor.withOpacity(0.15)),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: _buildMiddlePane(theme, isDark),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  } else {
+                    return _buildMobileView(theme, isDark);
+                  }
+                },
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-            child: ElevatedButton.icon(
-              onPressed: () => _fetchPage(_currentPage),
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Refresh Data'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 1100;
-          final isTablet = constraints.maxWidth >= 720 && constraints.maxWidth < 1100;
-
-          if (_isLoading && _logs.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6)));
-          }
-
-          if (_error != null && _logs.isEmpty) {
-            return _buildErrorWidget(theme);
-          }
-
-          if (isDesktop) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left Panel: Logs & search
-                Container(
-                  width: 350,
-                  color: theme.cardColor,
-                  child: _buildLeftPane(theme, isDark),
-                ),
-                Container(width: 1, color: theme.dividerColor),
-                // Middle Panel: Conversation detail bubble
-                Expanded(
-                  child: _buildMiddlePane(theme, isDark),
-                ),
-                Container(width: 1, color: theme.dividerColor),
-                // Right Panel: Summary stats & details
-                SizedBox(
-                  width: 320,
-                  child: _buildRightPane(theme, isDark),
-                ),
-              ],
-            );
-          } else if (isTablet) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: 340,
-                  color: theme.cardColor,
-                  child: _buildLeftPane(theme, isDark),
-                ),
-                Container(width: 1, color: theme.dividerColor),
-                Expanded(
-                  child: _buildMiddlePane(theme, isDark),
-                ),
-              ],
-            );
-          } else {
-            return _buildMobileView(theme, isDark);
-          }
-        },
       ),
     );
   }
@@ -238,30 +318,9 @@ class _ChatbotHistoryScreenState extends ConsumerState<ChatbotHistoryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'History Chat',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Pantau log pesan user, respon asisten AI, kesesuaian jawaban, serta analisis token per sesi percakapan.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
         // Search Box
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
