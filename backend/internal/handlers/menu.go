@@ -79,6 +79,12 @@ func UpdateMenu(c *gin.Context) {
 	}
 	req.ID = menu.ID
 	req.CreatedAt = menu.CreatedAt
+	if companyID, exists := c.Get("companyID"); exists {
+		req.CompanyID = companyID.(uint)
+	} else if req.CompanyID == 0 {
+		req.CompanyID = menu.CompanyID
+	}
+
 	if err := database.DB.Save(&req).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update menu"})
 		return
@@ -142,6 +148,12 @@ func UpdateCategory(c *gin.Context) {
 		return
 	}
 	req.ID = cat.ID
+	if companyID, exists := c.Get("companyID"); exists {
+		req.CompanyID = companyID.(uint)
+	} else if req.CompanyID == 0 {
+		req.CompanyID = cat.CompanyID
+	}
+
 	if err := database.DB.Save(&req).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category"})
 		return

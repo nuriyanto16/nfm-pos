@@ -25,6 +25,12 @@ final branchListProvider = FutureProvider<List<dynamic>>((ref) async {
   return res.data as List<dynamic>;
 });
 
+final companyDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
+  final dio = ref.read(dioProvider);
+  final res = await dio.get('companies');
+  return res.data as List<dynamic>;
+});
+
 // ─── Dummy food images ────────────────────────────────────────────────────────
 const _dummyFoodImages = [
   'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=300&fit=crop',
@@ -457,6 +463,7 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
   final _stockController = TextEditingController();
   int? _selectedCategoryId;
   int? _selectedBranchId;
+  int? _selectedCompanyId;
   bool _isAvailable = true;
   bool _isSaving = false;
   String? _imageUrl;
@@ -473,6 +480,7 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
       _stockController.text = (m['stock'] ?? 0).toString();
       _selectedCategoryId = m['category_id'];
       _selectedBranchId = m['branch_id'];
+      _selectedCompanyId = m['company_id'];
       _isAvailable = m['is_available'] ?? true;
       _imageUrl = m['image_url'];
     }
@@ -585,6 +593,21 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                ref.watch(companyDropdownProvider).when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const Text('Error load company'),
+                  data: (companies) {
+                    final valueExists = _selectedCompanyId != null && companies.any((c) => c['id'] == _selectedCompanyId);
+                    return DropdownButtonFormField<int>(
+                      value: valueExists ? _selectedCompanyId : null,
+                      decoration: const InputDecoration(labelText: 'Perusahaan *', border: OutlineInputBorder()),
+                      items: companies.map<DropdownMenuItem<int>>((c) => DropdownMenuItem(value: c['id'], child: Text(c['name']))).toList(),
+                      onChanged: (v) => setState(() => _selectedCompanyId = v),
+                      validator: (v) => v == null ? 'Pilih perusahaan' : null,
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
                 catsAsync.when(
                   loading: () => const LinearProgressIndicator(),
                   error: (_, __) => const Text('Error load category'),
@@ -677,6 +700,7 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
     try {
       final dio = ref.read(dioProvider);
       final data = {
+        'company_id': _selectedCompanyId,
         'category_id': _selectedCategoryId,
         'branch_id': _selectedBranchId,
         'name': _nameController.text,

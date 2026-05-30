@@ -36,7 +36,7 @@ func main() {
 	// Public routes
 	api.POST("/login", handlers.Login)
 	api.GET("/captcha", handlers.GenerateCaptcha)
-	api.GET("/menus", handlers.GetMenus) // Allow chatbot/public to see menu prices
+	api.GET("/menus", middleware.OptionalAuth(), handlers.GetMenus) // Allow chatbot/public to see menu prices
 	
 	// Chatbot Proxy Routes (Server-side interaction)
 	api.GET("/chatbot/token", handlers.GetChatbotToken)

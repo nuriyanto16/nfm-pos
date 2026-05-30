@@ -16,15 +16,21 @@ class CompanyManagementScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final companiesAsync = ref.watch(companyListProvider);
+    final authMeAsync = ref.watch(authMeProvider);
     final colorScheme = Theme.of(context).colorScheme;
+
+    final userRole = authMeAsync.value?['role']?['name']?.toString() ?? '';
+    final isAdmin = userRole == 'Admin';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manajemen Perusahaan')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCompanyForm(context, ref, null),
-        icon: const Icon(Icons.business),
-        label: const Text('Tambah Perusahaan'),
-      ),
+      floatingActionButton: isAdmin
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _showCompanyForm(context, ref, null),
+              icon: const Icon(Icons.business),
+              label: const Text('Tambah Perusahaan'),
+            ),
       body: companiesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -48,10 +54,11 @@ class CompanyManagementScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => _showCompanyForm(context, ref, co)),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: colorScheme.error),
-                      onPressed: () => _deleteCompany(context, ref, co['id']),
-                    ),
+                    if (!isAdmin)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, color: colorScheme.error),
+                        onPressed: () => _deleteCompany(context, ref, co['id']),
+                      ),
                   ],
                 ),
               ),

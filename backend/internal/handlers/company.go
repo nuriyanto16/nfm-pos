@@ -18,7 +18,16 @@ import (
 
 func GetCompanies(c *gin.Context) {
 	var companies []models.Company
-	if err := database.DB.Find(&companies).Error; err != nil {
+	query := database.DB.Model(&models.Company{})
+
+	role := c.GetString("role")
+	companyID, companyExists := c.Get("companyID")
+
+	if role == "Admin" && companyExists {
+		query = query.Where("id = ?", companyID)
+	}
+
+	if err := query.Find(&companies).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch companies"})
 		return
 	}
@@ -32,6 +41,14 @@ func GetCompanyByID(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 		return
 	}
+
+	role := c.GetString("role")
+	companyID, companyExists := c.Get("companyID")
+	if role == "Admin" && companyExists && company.ID != companyID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: You only have access to your own company"})
+		return
+	}
+
 	c.JSON(http.StatusOK, company)
 }
 
@@ -106,6 +123,14 @@ func UpdateCompany(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 		return
 	}
+
+	role := c.GetString("role")
+	companyID, companyExists := c.Get("companyID")
+	if role == "Admin" && companyExists && company.ID != companyID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: You only have permission to update your own company"})
+		return
+	}
+
 	var req models.Company
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -121,6 +146,18 @@ func UpdateCompany(c *gin.Context) {
 
 func DeleteCompany(c *gin.Context) {
 	id := c.Param("id")
+	var company models.Company
+	if err := database.DB.First(&company, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+		return
+	}
+
+	role := c.GetString("role")
+	if role == "Admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Admin role cannot delete companies"})
+		return
+	}
+
 	if err := database.DB.Delete(&models.Company{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete company"})
 		return

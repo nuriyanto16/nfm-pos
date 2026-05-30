@@ -138,3 +138,46 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func OptionalAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.Next()
+			return
+		}
+
+		tokenString := strings.Split(authHeader, "Bearer ")
+		if len(tokenString) != 2 {
+			c.Next()
+			return
+		}
+
+		token, err := jwt.Parse(tokenString[1], func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method")
+			}
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+
+		if err == nil && token.Valid {
+			if claims, ok := token.Claims.(jwt.MapClaims); ok {
+				if userID, ok := claims["user_id"].(float64); ok {
+					c.Set("userID", uint(userID))
+				}
+				if customerUserID, ok := claims["customer_user_id"].(float64); ok {
+					c.Set("customerUserID", uint(customerUserID))
+				}
+				c.Set("role", claims["role"])
+				if branchID, exists := claims["branch_id"]; exists && branchID != nil {
+					c.Set("branchID", uint(branchID.(float64)))
+				}
+				if companyID, exists := claims["company_id"]; exists && companyID != nil {
+					c.Set("companyID", uint(companyID.(float64)))
+				}
+			}
+		}
+
+		c.Next()
+	}
+}
