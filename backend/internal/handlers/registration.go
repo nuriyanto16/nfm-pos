@@ -158,13 +158,22 @@ func ApproveRegistration(c *gin.Context) {
 	password := "nfm12345" // Default password
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
+	// Find Admin role ID dynamically instead of hardcoding '1' to avoid foreign key violations
+	var adminRole models.Role
+	if err := tx.Where("name = ?", "Admin").First(&adminRole).Error; err != nil {
+		tx.Rollback()
+		log.Printf("Error finding Admin role: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menemukan Role Admin di database"})
+		return
+	}
+
 	user := models.User{
 		CompanyID:    company.ID,
 		BranchID:     &branch.ID,
 		FullName:     reg.FullName,
 		Username:     username,
 		PasswordHash: string(hash),
-		RoleID:       1, // Admin
+		RoleID:       adminRole.ID,
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 	}
