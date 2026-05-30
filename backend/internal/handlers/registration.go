@@ -133,6 +133,8 @@ func ApproveRegistration(c *gin.Context) {
 		Name:      "Pusat (HQ)",
 		Code:      company.Code + "-01",
 		Address:   reg.BusinessAddress,
+		OpenTime:  "08:00:00",
+		CloseTime: "22:00:00",
 		IsActive:  true,
 		CreatedAt: time.Now(),
 	}
