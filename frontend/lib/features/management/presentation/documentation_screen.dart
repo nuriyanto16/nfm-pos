@@ -80,23 +80,24 @@ class _DocumentationScreenState extends ConsumerState<DocumentationScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final section = _sections[_selectedSection];
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: Column(
         children: [
-          // ─── Header ───────────────────────────────────────────────
+          // ─── Header (pakai warna tema aplikasi) ───────────────────
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  section.color,
-                  section.color.withBlue(220),
+                  colorScheme.primary,
+                  colorScheme.primary.withRed(
+                    (colorScheme.primary.red + 30).clamp(0, 255),
+                  ),
                 ],
               ),
             ),
@@ -111,7 +112,7 @@ class _DocumentationScreenState extends ConsumerState<DocumentationScreen>
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 28),
+                      child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 26),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -121,7 +122,7 @@ class _DocumentationScreenState extends ConsumerState<DocumentationScreen>
                           'Dokumentasi Sistem',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.3,
                           ),
@@ -137,13 +138,14 @@ class _DocumentationScreenState extends ConsumerState<DocumentationScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 // Tab Bar
                 TabBar(
                   controller: _tabController,
                   isScrollable: true,
                   indicatorColor: Colors.white,
                   indicatorWeight: 3,
+                  dividerColor: Colors.transparent,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.6),
                   labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -176,6 +178,7 @@ class _DocumentationScreenState extends ConsumerState<DocumentationScreen>
     );
   }
 }
+
 
 // ─── Section View ─────────────────────────────────────────────────────────────
 class _SectionView extends StatefulWidget {
