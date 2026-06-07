@@ -130,6 +130,7 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
   String? _logoUrl;
   bool _isUploading = false;
   bool _isSaving = false;
+  String _selectedPosType = 'resto';
 
   @override
   void initState() {
@@ -145,6 +146,7 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
     _waWebhookCtrl = TextEditingController(text: widget.company?['whatsapp_webhook'] ?? '');
     _waApiKeyCtrl = TextEditingController(text: widget.company?['whatsapp_api_key'] ?? '');
     _logoUrl = widget.company?['logo_url'];
+    _selectedPosType = widget.company?['pos_type'] ?? 'resto';
   }
 
   Future<void> _pickAndUploadLogo() async {
@@ -212,6 +214,22 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
             const SizedBox(height: 20),
             TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Nama Perusahaan *', border: OutlineInputBorder())),
             const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _selectedPosType,
+              decoration: const InputDecoration(labelText: 'Tipe POS *', border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(value: 'resto', child: Text('F&B (Resto/Cafe)')),
+                DropdownMenuItem(value: 'fashion', child: Text('POS Fashion')),
+                DropdownMenuItem(value: 'retail', child: Text('POS Retail/Toko')),
+                DropdownMenuItem(value: 'jasa', child: Text('POS Jasa (Laundry/Salon)')),
+              ],
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() => _selectedPosType = v);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
             TextField(controller: _codeCtrl, decoration: const InputDecoration(labelText: 'Kode *', border: OutlineInputBorder()), enabled: widget.company == null),
             const SizedBox(height: 12),
             TextField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Telepon', border: OutlineInputBorder())),
@@ -253,6 +271,7 @@ class _CompanyFormDialogState extends ConsumerState<_CompanyFormDialog> {
         'phone': _phoneCtrl.text,
         'address': _addressCtrl.text,
         'logo_url': _logoUrl,
+        'pos_type': _selectedPosType,
         'payment_gateway_webhook': _payWebhookCtrl.text,
         'payment_gateway_api_key': _payApiKeyCtrl.text,
         'courier_webhook': _courierWebhookCtrl.text,

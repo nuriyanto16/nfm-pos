@@ -6,19 +6,53 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/skeleton.dart';
 
+import '../../../shared/widgets/sidebar_layout.dart';
+
+final dashboardPosTypeProvider = StateProvider<String>((ref) => '');
+
 final dashboardStatsProvider = FutureProvider((ref) async {
   final dio = ref.read(dioProvider);
-  final response = await dio.get('dashboard/stats');
+  final posType = ref.watch(dashboardPosTypeProvider);
+  final queryParameters = posType.isNotEmpty ? {'pos_type': posType} : <String, dynamic>{};
+  final response = await dio.get('dashboard/stats', queryParameters: queryParameters);
   return response.data as Map<String, dynamic>;
 });
 
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
+
+  Widget _buildFilterChip(BuildContext context, WidgetRef ref, String value, String label, IconData icon) {
+    final activePosType = ref.watch(dashboardPosTypeProvider);
+    final isSelected = activePosType == value;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ChoiceChip(
+      avatar: Icon(icon, size: 16, color: isSelected ? Colors.white : colorScheme.onSurfaceVariant),
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: colorScheme.primary,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : colorScheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      onSelected: (selected) {
+        if (selected) {
+          ref.read(dashboardPosTypeProvider.notifier).state = value;
+        }
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(dashboardStatsProvider);
     final isMobile = MediaQuery.of(context).size.width < 700;
+    final authMeAsync = ref.watch(authMeProvider);
+    final isSuperUser = authMeAsync.maybeWhen(
+      data: (user) => user['role']?['name'] == 'Super User',
+      orElse: () => false,
+    );
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -50,6 +84,25 @@ class DashboardScreen extends ConsumerWidget {
                     DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
                     style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 12),
                   ),
+                  if (isSuperUser) ...[
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFilterChip(context, ref, '', 'Semua POS', Icons.all_inclusive),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(context, ref, 'resto', 'Restoran / Cafe', Icons.restaurant),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(context, ref, 'retail', 'Retail / Toko', Icons.storefront),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(context, ref, 'fashion', 'Fashion', Icons.checkroom),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(context, ref, 'jasa', 'Jasa / Laundry', Icons.dry_cleaning),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 24),

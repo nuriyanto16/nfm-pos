@@ -153,6 +153,7 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
   final _closeTimeCtrl = TextEditingController(text: '22:00');
   bool _isActive = true;
   bool _isSaving = false;
+  String _selectedPosType = 'resto';
 
   @override
   void initState() {
@@ -166,6 +167,7 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
       _openTimeCtrl.text = widget.branch!['open_time'] != null ? widget.branch!['open_time'].toString().substring(0, 5) : '08:00';
       _closeTimeCtrl.text = widget.branch!['close_time'] != null ? widget.branch!['close_time'].toString().substring(0, 5) : '22:00';
       _isActive = widget.branch!['is_active'] ?? true;
+      _selectedPosType = widget.branch!['pos_type'] ?? 'resto';
     }
   }
 
@@ -214,6 +216,22 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
                   controller: _nameCtrl,
                   decoration: const InputDecoration(labelText: 'Nama Cabang *', border: OutlineInputBorder()),
                   validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedPosType,
+                  decoration: const InputDecoration(labelText: 'Tipe POS *', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'resto', child: Text('F&B (Resto/Cafe)')),
+                    DropdownMenuItem(value: 'fashion', child: Text('POS Fashion')),
+                    DropdownMenuItem(value: 'retail', child: Text('POS Retail/Toko')),
+                    DropdownMenuItem(value: 'jasa', child: Text('POS Jasa (Laundry/Salon)')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _selectedPosType = v);
+                    }
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -297,6 +315,7 @@ class _BranchFormDialogState extends ConsumerState<_BranchFormDialog> {
         'open_time': _openTimeCtrl.text,
         'close_time': _closeTimeCtrl.text,
         'is_active': _isActive,
+        'pos_type': _selectedPosType,
       };
       if (widget.branch != null) {
         await dio.put('branches/${widget.branch!['id']}', data: data);

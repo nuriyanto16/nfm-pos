@@ -36,88 +36,208 @@ class TableManagementScreen extends ConsumerWidget {
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 160,
-                    childAspectRatio: 1,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    maxCrossAxisExtent: 180,
+                    childAspectRatio: 0.8,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
                   ),
                   itemCount: state.items.length,
                   itemBuilder: (context, i) {
                     final t = state.items[i];
                     final isOccupied = t['status'] == 'Digunakan';
+                    final hasImage = t['image_url'] != null && t['image_url'].toString().isNotEmpty;
+                    
                     return Card(
-                      elevation: 2,
-                      shadowColor: isOccupied ? colorScheme.error.withOpacity(0.2) : Colors.black12,
+                      elevation: isOccupied ? 4 : 2,
+                      shadowColor: isOccupied ? Colors.red.withOpacity(0.3) : Colors.black12,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                         side: BorderSide(
-                          color: isOccupied ? colorScheme.error.withOpacity(0.5) : colorScheme.outlineVariant,
-                          width: 1,
+                          color: isOccupied ? Colors.red.shade400 : colorScheme.outlineVariant,
+                          width: isOccupied ? 2.0 : 1.0,
                         ),
                       ),
                       child: InkWell(
                         onTap: () => _showTableForm(context, ref, t),
                         borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              t['image_url'] != null && t['image_url'].toString().isNotEmpty
-                                  ? Expanded(
-                                      child: Container(
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.surfaceVariant,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: Image.network(
-                                            '${ref.read(dioProvider).options.baseUrl.replaceAll('/api/', '')}${t['image_url']}',
-                                            fit: BoxFit.cover,
-                                            loadingBuilder: (context, child, loadingProgress) {
-                                              if (loadingProgress == null) return child;
-                                              return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                            },
-                                            errorBuilder: (context, error, stackTrace) => Icon(
-                                              Icons.table_restaurant, 
-                                              size: 40, 
-                                              color: isOccupied ? colorScheme.error : colorScheme.primary.withOpacity(0.5)
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Top Image/Placeholder Area with Overlays
+                            Expanded(
+                              flex: 3,
+                              child: Stack(
+                                children: [
+                                  // Background Image or Placeholder
+                                  Positioned.fill(
+                                    child: ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                      child: hasImage
+                                          ? Image.network(
+                                              '${ref.read(dioProvider).options.baseUrl.replaceAll('/api/', '')}${t['image_url']}',
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Container(
+                                                  color: colorScheme.surfaceVariant,
+                                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                                );
+                                              },
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                color: (isOccupied ? Colors.red.shade50 : colorScheme.primary.withOpacity(0.05)),
+                                                child: Icon(
+                                                  Icons.table_restaurant, 
+                                                  size: 44, 
+                                                  color: isOccupied ? Colors.red.shade400 : colorScheme.primary.withOpacity(0.5)
+                                                ),
+                                              ),
+                                            )
+                                          : Container(
+                                              color: (isOccupied ? Colors.red.shade50 : colorScheme.primary.withOpacity(0.05)),
+                                              child: Icon(
+                                                Icons.table_restaurant, 
+                                                size: 44, 
+                                                color: isOccupied ? Colors.red.shade400 : colorScheme.primary.withOpacity(0.5)
+                                              ),
                                             ),
+                                    ),
+                                  ),
+                                  // Color flag overlay for occupied tables
+                                  if (isOccupied)
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.red.withOpacity(0.12),
+                                              Colors.transparent,
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    )
-                                  : Container(
-                                      height: 60,
-                                      width: 60,
+                                    ),
+                                  // Top-Right: Status Badge
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: (isOccupied ? colorScheme.error : colorScheme.primary).withOpacity(0.1),
-                                        shape: BoxShape.circle,
+                                        color: isOccupied ? Colors.red.shade600 : Colors.green.shade600,
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: const [
+                                          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                                        ],
                                       ),
-                                      child: Icon(
-                                        Icons.table_restaurant, 
-                                        color: isOccupied ? colorScheme.error : colorScheme.primary,
-                                        size: 32,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isOccupied ? 'Digunakan' : 'Kosong',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                              const SizedBox(height: 8),
-                              Text('Meja ${t['table_number']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              Text('Kapasitas: ${t['capacity']}', style: const TextStyle(fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Text(t['status'] ?? 'Kosong', 
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isOccupied ? colorScheme.error : Colors.green)),
-                              const Spacer(),
-                              IconButton(
-                                icon: const Icon(Icons.qr_code),
-                                tooltip: 'Tampilkan Stiker QR',
-                                onPressed: () {
-                                  _showTableQR(context, t);
-                                },
-                              )
-                            ],
-                          ),
+                                  ),
+                                  // Top-Left: QR Code Button overlay
+                                  Positioned(
+                                    top: 8,
+                                    left: 8,
+                                    child: Material(
+                                      type: MaterialType.transparency,
+                                      child: InkWell(
+                                        onTap: () => _showTableQR(context, t),
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.5),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.qr_code,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Bottom Info Area
+                            Expanded(
+                              flex: 2,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Meja ${t['table_number']}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.people_outline, size: 12, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Kapasitas: ${t['capacity']}',
+                                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                            ),
+                                          ],
+                                        ),
+                                        if (t['floor'] != null && t['floor'].toString().isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.layers_outlined, size: 12, color: Colors.grey),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Lantai ${t['floor']}',
+                                                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    // Visual Bottom Indicator Flag
+                                    Container(
+                                      height: 3,
+                                      width: 36,
+                                      decoration: BoxDecoration(
+                                        color: isOccupied ? Colors.red.shade600 : Colors.green.shade600,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );

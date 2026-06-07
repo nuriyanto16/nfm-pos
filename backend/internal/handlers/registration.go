@@ -24,6 +24,8 @@ type RegistrationRequest struct {
 	BusinessName     string `json:"businessName" binding:"required"`
 	BusinessAddress  string `json:"businessAddress"`
 	BusinessCategory string `json:"businessCategory"`
+	Plan             string `json:"plan"`
+	POSType          string `json:"pos_type"`
 	CaptchaID        string `json:"captcha_id" binding:"required"`
 	CaptchaValue     string `json:"captcha_value" binding:"required"`
 }
@@ -53,6 +55,30 @@ func CreateRegistration(c *gin.Context) {
 		return
 	}
 
+	// Default to UMKM if empty
+	planVal := req.Plan
+	if planVal == "" {
+		planVal = "UMKM"
+	}
+
+	posTypeVal := req.POSType
+	if posTypeVal == "" {
+		posTypeVal = "resto"
+		bc := strings.ToLower(req.BusinessCategory)
+		if strings.Contains(bc, "retail") || strings.Contains(bc, "toko") {
+			posTypeVal = "retail"
+		} else if strings.Contains(bc, "jasa") || strings.Contains(bc, "laundry") || strings.Contains(bc, "salon") || strings.Contains(bc, "cuci") {
+			posTypeVal = "jasa"
+		} else if strings.Contains(bc, "fashion") {
+			posTypeVal = "fashion"
+		}
+	}
+
+	isPaidVal := false
+	if planVal == "UMKM" {
+		isPaidVal = true
+	}
+
 	registration := models.TrialRegistration{
 		FullName:         req.FullName,
 		Email:            req.Email,
@@ -61,6 +87,9 @@ func CreateRegistration(c *gin.Context) {
 		BusinessAddress:  req.BusinessAddress,
 		BusinessCategory: req.BusinessCategory,
 		Status:           "Pending",
+		Plan:             planVal,
+		POSType:          posTypeVal,
+		IsPaid:           isPaidVal,
 		CreatedAt:        time.Now(),
 	}
 
@@ -104,6 +133,20 @@ func ApproveRegistration(c *gin.Context) {
 		return
 	}
 
+	posType := "resto"
+	if reg.POSType != "" {
+		posType = reg.POSType
+	} else {
+		bc := strings.ToLower(reg.BusinessCategory)
+		if strings.Contains(bc, "retail") || strings.Contains(bc, "toko") {
+			posType = "retail"
+		} else if strings.Contains(bc, "jasa") || strings.Contains(bc, "laundry") || strings.Contains(bc, "salon") || strings.Contains(bc, "cuci") {
+			posType = "jasa"
+		} else if strings.Contains(bc, "fashion") {
+			posType = "fashion"
+		}
+	}
+
 	// 1. Create Company
 	companyCode := strings.ToUpper(strings.ReplaceAll(reg.BusinessName, " ", ""))
 	if len(companyCode) > 10 {
@@ -112,13 +155,16 @@ func ApproveRegistration(c *gin.Context) {
 	companyCode = fmt.Sprintf("%s%d", companyCode, reg.ID)
 
 	company := models.Company{
-		Name:      reg.BusinessName,
-		Code:      companyCode,
-		Address:   reg.BusinessAddress,
-		Email:     reg.Email,
-		Phone:     reg.Phone,
-		IsActive:  true,
-		CreatedAt: time.Now(),
+		Name:             reg.BusinessName,
+		Code:             companyCode,
+		Address:          reg.BusinessAddress,
+		Email:            reg.Email,
+		Phone:            reg.Phone,
+		IsActive:         true,
+		SubscriptionPlan: reg.Plan,
+		BusinessCategory: reg.BusinessCategory,
+		POSType:          posType,
+		CreatedAt:        time.Now(),
 	}
 	if err := tx.Create(&company).Error; err != nil {
 		tx.Rollback()
@@ -136,6 +182,7 @@ func ApproveRegistration(c *gin.Context) {
 		OpenTime:  "08:00:00",
 		CloseTime: "22:00:00",
 		IsActive:  true,
+		POSType:   posType,
 		CreatedAt: time.Now(),
 	}
 	if err := tx.Create(&branch).Error; err != nil {
@@ -186,8 +233,11 @@ func ApproveRegistration(c *gin.Context) {
 		return
 	}
 
-	// 4. Update Registration Status
-	if err := tx.Model(&reg).Update("status", "Approved").Error; err != nil {
+	// 4. Update Registration Status & Payment Status
+	if err := tx.Model(&reg).Updates(map[string]interface{}{
+		"status":  "Approved",
+		"is_paid": true,
+	}).Error; err != nil {
 		tx.Rollback()
 		log.Printf("Error updating registration: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update pendaftaran"})
@@ -202,7 +252,7 @@ func ApproveRegistration(c *gin.Context) {
 
 	// 5. Seed Basic Data (Optional - Outside main transaction)
 	// We do this AFTER commit so it doesn't break the main account creation
-	go seedSampleData(company.ID)
+	go seedSampleData(company.ID, reg.BusinessCategory)
 
 	// 6. Send WA Notification to user
 	go services.SendApprovalToWA(reg, username, password)
@@ -217,10 +267,29 @@ func ApproveRegistration(c *gin.Context) {
 }
 
 // helper to seed sample data using global DB
-func seedSampleData(companyID uint) {
+func seedSampleData(companyID uint, businessCategory string) {
+	posType := "resto"
+	catName := "Makanan"
+	prodName := "Contoh Produk Makanan"
+	
+	bc := strings.ToLower(businessCategory)
+	if strings.Contains(bc, "retail") || strings.Contains(bc, "toko") {
+		posType = "retail"
+		catName = "Barang Retail"
+		prodName = "Contoh Barang Retail"
+	} else if strings.Contains(bc, "jasa") || strings.Contains(bc, "laundry") || strings.Contains(bc, "salon") || strings.Contains(bc, "cuci") {
+		posType = "jasa"
+		catName = "Layanan Jasa"
+		prodName = "Contoh Layanan Jasa"
+	} else if strings.Contains(bc, "fashion") {
+		posType = "fashion"
+		catName = "Fashion"
+		prodName = "Contoh Pakaian"
+	}
+
 	var cat models.Category
-	err := database.DB.Where(models.Category{CompanyID: companyID, Name: "Makanan"}).
-		Assign(models.Category{Description: "Kategori Utama"}).
+	err := database.DB.Where(models.Category{CompanyID: companyID, Name: catName, POSType: posType}).
+		Assign(models.Category{Description: "Kategori Utama", POSType: posType}).
 		FirstOrCreate(&cat).Error
 	if err != nil {
 		log.Printf("Warning: Failed to seed sample category: %v", err)
@@ -230,9 +299,10 @@ func seedSampleData(companyID uint) {
 	menu := models.Menu{
 		CompanyID:   companyID,
 		CategoryID:  cat.ID,
-		Name:        "Contoh Produk",
+		Name:        prodName,
 		Price:       15000,
 		IsAvailable: true,
+		POSType:     posType,
 		CreatedAt:   time.Now(),
 	}
 	if err := database.DB.Create(&menu).Error; err != nil {
@@ -251,21 +321,35 @@ func GetRegistrations(c *gin.Context) {
 
 func UpdateRegistrationStatus(c *gin.Context) {
 	id := c.Param("id")
-	var input struct {
-		Status string `json:"status" binding:"required"`
-	}
+	var input map[string]interface{}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := database.DB.Model(&models.TrialRegistration{}).Where("id = ?", id).Update("status", input.Status).Error; err != nil {
+	updates := make(map[string]interface{})
+	if status, exists := input["status"]; exists {
+		updates["status"] = status
+	}
+	if isPaid, exists := input["is_paid"]; exists {
+		updates["is_paid"] = isPaid
+	}
+	if posType, exists := input["pos_type"]; exists {
+		updates["pos_type"] = posType
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data yang diupdate"})
+		return
+	}
+
+	if err := database.DB.Model(&models.TrialRegistration{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update status"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Status berhasil diupdate"})
+	c.JSON(http.StatusOK, gin.H{"message": "Status berhasil diupdate", "data": updates})
 }
 
 func DeleteRegistration(c *gin.Context) {
@@ -291,17 +375,24 @@ func sendTelegramNotification(reg models.TrialRegistration) {
 		}
 	}
 
-	message := fmt.Sprintf("🚀 *Pendaftaran Trial Baru (Free UMKM)*\n\n"+
+	paymentStatus := "🔴 Belum Bayar"
+	if reg.IsPaid {
+		paymentStatus = "🟢 Sudah Bayar (Free/Lunas)"
+	}
+
+	message := fmt.Sprintf("🚀 *Pendaftaran Baru (%s)*\n\n"+
 		"━━━━━━━━━━━━━━━━━━━━\n"+
 		"👤 *Nama:* %s\n"+
 		"🏢 *Bisnis:* %s\n"+
 		"📁 *Kategori:* %s\n"+
+		"🖥️ *Jenis POS:* %s\n"+
+		"💳 *Status Bayar:* %s\n"+
 		"📍 *Alamat:* %s\n"+
 		"📧 *Email:* %s\n"+
 		"📞 *WhatsApp:* `%s`\n"+
 		"━━━━━━━━━━━━━━━━━━━━\n\n"+
 		"💡 *Gunakan tombol di bawah untuk menyetujui dan membuat akun dummy otomatis.*",
-		reg.FullName, reg.BusinessName, reg.BusinessCategory, reg.BusinessAddress, reg.Email, reg.Phone)
+		reg.Plan, reg.FullName, reg.BusinessName, reg.BusinessCategory, reg.POSType, paymentStatus, reg.BusinessAddress, reg.Email, reg.Phone)
 
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", token)
 	

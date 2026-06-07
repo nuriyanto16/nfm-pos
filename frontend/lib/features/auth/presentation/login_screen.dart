@@ -82,12 +82,167 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Widget _buildHeader(ThemeData theme, ColorScheme colorScheme, String appName, String companyName) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Hero(
+          tag: 'app_logo',
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.restaurant_rounded, size: 64, color: colorScheme.primary),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          appName,
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.5,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        Text(
+          companyName,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.outline,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginCard(BuildContext context, ColorScheme colorScheme) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      color: colorScheme.surface.withOpacity(0.7),
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Selamat Datang',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Silakan masuk untuk melanjutkan',
+              style: TextStyle(fontSize: 13, color: colorScheme.outline),
+            ),
+            const SizedBox(height: 32),
+            
+            _buildTextField(
+              label: 'Username',
+              controller: _usernameController,
+              hint: 'Masukkan username',
+              icon: Icons.person_outline_rounded,
+            ),
+            const SizedBox(height: 20),
+            
+            _buildTextField(
+              label: 'Password',
+              controller: _passwordController,
+              hint: '••••••••',
+              icon: Icons.lock_outline_rounded,
+              obscure: true,
+            ),
+            
+            if (_captchaImage != null) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Verifikasi Keamanan',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        color: Colors.white,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          onTap: _fetchCaptcha,
+                          child: Image.memory(
+                            base64Decode(_captchaImage!.split(',').last),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: _fetchCaptcha,
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    style: IconButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                label: '',
+                controller: _captchaController,
+                hint: 'Kode Captcha',
+                icon: Icons.verified_user_outlined,
+              ),
+            ],
+            
+            const SizedBox(height: 32),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton(
+                onPressed: _isLoading ? null : _login,
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: _isLoading 
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('MASUK KE SISTEM', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(ThemeData theme, ColorScheme colorScheme) {
+    return Text(
+      'NFM POS SYSTEM v2.1',
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: colorScheme.outline.withOpacity(0.5),
+        letterSpacing: 2,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final settingsAsync = ref.watch(settingsProvider);
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    final isMobile = MediaQuery.of(context).size.width < 900;
     
     final appName = settingsAsync.when(
       data: (s) => s['app_name']?.toString() ?? 'NFM POS',
@@ -119,161 +274,75 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo & Brand
-                  Hero(
-                    tag: 'app_logo',
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.restaurant_rounded, size: 64, color: colorScheme.primary),
+            child: isMobile
+                ? Container(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildHeader(theme, colorScheme, appName, companyName),
+                        const SizedBox(height: 32),
+                        _buildLoginCard(context, colorScheme),
+                        const SizedBox(height: 40),
+                        _buildFooter(theme, colorScheme),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    appName,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    companyName,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.outline,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  
-                  // Login Card
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
-                    ),
-                    color: colorScheme.surface.withOpacity(0.7),
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Selamat Datang',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Silakan masuk untuk melanjutkan',
-                            style: TextStyle(fontSize: 13, color: colorScheme.outline),
-                          ),
-                          const SizedBox(height: 32),
-                          
-                          _buildTextField(
-                            label: 'Username',
-                            controller: _usernameController,
-                            hint: 'Masukkan username',
-                            icon: Icons.person_outline_rounded,
-                          ),
-                          const SizedBox(height: 20),
-                          
-                          _buildTextField(
-                            label: 'Password',
-                            controller: _passwordController,
-                            hint: '••••••••',
-                            icon: Icons.lock_outline_rounded,
-                            obscure: true,
-                          ),
-                          
-                          if (_captchaImage != null) ...[
-                            const SizedBox(height: 20),
-                            const Text(
-                              'Verifikasi Keamanan',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  )
+                : Container(
+                    constraints: const BoxConstraints(maxWidth: 1100),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Left side: Illustration
+                        Expanded(
+                          flex: 5,
+                          child: Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32),
+                              side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
+                            color: colorScheme.surface.withOpacity(0.4),
+                            child: Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  _buildHeader(theme, colorScheme, appName, companyName),
+                                  const SizedBox(height: 32),
+                                  SizedBox(
+                                    height: 380,
+                                    child: Image.network(
+                                      'smart_restaurant_ecosystem.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 40),
+                        // Right side: Login form
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Expanded(
-                                  child: Container(
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: colorScheme.outlineVariant),
-                                      color: Colors.white,
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: InkWell(
-                                        onTap: _fetchCaptcha,
-                                        child: Image.memory(
-                                          base64Decode(_captchaImage!.split(',').last),
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton.filledTonal(
-                                  onPressed: _fetchCaptcha,
-                                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                                  style: IconButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                ),
+                                _buildLoginCard(context, colorScheme),
+                                const SizedBox(height: 24),
+                                _buildFooter(theme, colorScheme),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            _buildTextField(
-                              label: '',
-                              controller: _captchaController,
-                              hint: 'Kode Captcha',
-                              icon: Icons.verified_user_outlined,
-                            ),
-                          ],
-                          
-                          const SizedBox(height: 32),
-                          
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: FilledButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: FilledButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                elevation: 0,
-                              ),
-                              child: _isLoading 
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Text('MASUK KE SISTEM', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
-                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 40),
-                  Text(
-                    'NFM POS SYSTEM v2.1',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.outline.withOpacity(0.5),
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ),

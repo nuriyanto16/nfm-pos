@@ -19,6 +19,7 @@ backend/backend_stdout.log
 *.exe
 backend/main.exe
 backend/tmp_build.exe
+backend/tmp_build/
 frontend/build/
 frontend/.dart_tool/
 frontend/.packages

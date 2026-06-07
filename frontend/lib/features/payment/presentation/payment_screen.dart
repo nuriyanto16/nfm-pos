@@ -9,7 +9,8 @@ import 'widgets/receipt_view.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   final int? orderId;
-  const PaymentScreen({super.key, this.orderId});
+  final String? posType;
+  const PaymentScreen({super.key, this.orderId, this.posType});
 
   @override
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
@@ -42,6 +43,26 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize orderSource and deliveryMethod based on posType
+    final type = widget.posType?.toLowerCase() ?? 'resto';
+    switch (type) {
+      case 'fashion':
+        orderSource = 'Fashion';
+        deliveryMethod = 'Bawa Pulang';
+        break;
+      case 'retail':
+        orderSource = 'Retail';
+        deliveryMethod = 'Bawa Pulang';
+        break;
+      case 'jasa':
+        orderSource = 'Jasa';
+        deliveryMethod = 'Bawa Pulang';
+        break;
+      default:
+        orderSource = 'Resto';
+        deliveryMethod = 'Makan di Tempat';
+    }
+
     if (widget.orderId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingOrder());
     }
@@ -287,6 +308,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               onSourceChanged: (v) => setState(() => orderSource = v!),
               deliveryMethod: deliveryMethod,
               onDeliveryMethodChanged: (v) => setState(() => deliveryMethod = v!),
+              posType: widget.posType ?? 'resto',
             ),
           ),
         ),
@@ -328,6 +350,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             onSourceChanged: (v) => setState(() => orderSource = v!),
             deliveryMethod: deliveryMethod,
             onDeliveryMethodChanged: (v) => setState(() => deliveryMethod = v!),
+            posType: widget.posType ?? 'resto',
           ),
         ],
       ),
@@ -431,6 +454,7 @@ class _PaymentForm extends StatelessWidget {
   final ValueChanged<String?> onSourceChanged;
   final String deliveryMethod;
   final ValueChanged<String?> onDeliveryMethodChanged;
+  final String posType;
 
   const _PaymentForm({
     required this.selectedMethod,
@@ -452,6 +476,7 @@ class _PaymentForm extends StatelessWidget {
     required this.onSourceChanged,
     required this.deliveryMethod,
     required this.onDeliveryMethodChanged,
+    required this.posType,
   });
   
   final bool isPaid;
@@ -471,6 +496,29 @@ class _PaymentForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    final type = posType.toLowerCase();
+    List<String> sources;
+    switch (type) {
+      case 'fashion':
+        sources = ['Fashion', 'Online', 'Manual'];
+        break;
+      case 'retail':
+        sources = ['Retail', 'Online', 'Manual'];
+        break;
+      case 'jasa':
+        sources = ['Jasa', 'Online', 'Manual'];
+        break;
+      default:
+        sources = ['Resto', 'Online', 'Shopee Food', 'Go Food', 'Grab Food'];
+    }
+
+    List<String> deliveries;
+    if (type == 'resto') {
+      deliveries = ['Makan di Tempat', 'Bawa Pulang', 'Pengiriman'];
+    } else {
+      deliveries = ['Bawa Pulang', 'Pengiriman'];
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -481,7 +529,7 @@ class _PaymentForm extends StatelessWidget {
           DropdownButtonFormField<String>(
             value: orderSource,
             decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12)),
-            items: ['Resto', 'Online', 'Shopee Food', 'Go Food', 'Grab Food'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+            items: sources.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
             onChanged: onSourceChanged,
           ),
           const SizedBox(height: 16),
@@ -490,7 +538,7 @@ class _PaymentForm extends StatelessWidget {
           DropdownButtonFormField<String>(
             value: deliveryMethod,
             decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12)),
-            items: ['Makan di Tempat', 'Bawa Pulang', 'Pengiriman'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+            items: deliveries.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
             onChanged: onDeliveryMethodChanged,
           ),
           const SizedBox(height: 20),

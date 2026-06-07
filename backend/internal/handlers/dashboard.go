@@ -20,24 +20,41 @@ func GetDashboardStats(c *gin.Context) {
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
+	posType := c.Query("pos_type")
+
 	// Total Orders Today
-	database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).Where("created_at >= ?", startOfDay).Count(&totalOrdersToday)
+	queryOrders := database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).Where("created_at >= ?", startOfDay)
+	if posType != "" {
+		queryOrders = queryOrders.Where("order_source = ?", posType)
+	}
+	queryOrders.Count(&totalOrdersToday)
 
 	// Total Revenue Today (Only completed orders)
-	database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
-		Where("created_at >= ? AND status = ?", startOfDay, "Selesai").
-		Select("COALESCE(SUM(total_amount), 0)").
-		Row().Scan(&totalRevenueToday)
+	queryRev := database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
+		Where("created_at >= ? AND status = ?", startOfDay, "Selesai")
+	if posType != "" {
+		queryRev = queryRev.Where("order_source = ?", posType)
+	}
+	queryRev.Select("COALESCE(SUM(total_amount), 0)").Row().Scan(&totalRevenueToday)
 
 	// Tables Status
-	database.DB.Model(&models.Table{}).Scopes(middleware.GetQueryScope(c)).Where("status = ?", "Digunakan").Count(&activeTables)
-	database.DB.Model(&models.Table{}).Scopes(middleware.GetQueryScope(c)).Where("status = ?", "Kosong").Count(&availableTables)
+	if posType != "" && posType != "resto" {
+		activeTables = 0
+		availableTables = 0
+	} else {
+		database.DB.Model(&models.Table{}).Scopes(middleware.GetQueryScope(c)).Where("status = ?", "Digunakan").Count(&activeTables)
+		database.DB.Model(&models.Table{}).Scopes(middleware.GetQueryScope(c)).Where("status = ?", "Kosong").Count(&availableTables)
+	}
 
 	// Recent Orders (Last 5)
 	var recentOrders []models.Order
-	database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
+	queryRecent := database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
 		Preload("Table").Preload("User").Preload("Customer").Preload("Branch").
-		Order("created_at desc").Limit(5).Find(&recentOrders)
+		Order("created_at desc").Limit(5)
+	if posType != "" {
+		queryRecent = queryRecent.Where("order_source = ?", posType)
+	}
+	queryRecent.Find(&recentOrders)
 
 	// Low Stock Ingredients (Stock <= 10)
 	var lowStockIngredients []models.Ingredient
@@ -54,10 +71,13 @@ func GetDashboardStats(c *gin.Context) {
 	var dailyData []DailyRevenue
 
 	// Using raw SQL to group by date
-	database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
+	queryChart := database.DB.Model(&models.Order{}).Scopes(middleware.GetQueryScope(c)).
 		Select("DATE(created_at) as date, SUM(total_amount) as total").
-		Where("created_at >= ? AND status = ?", sevenDaysAgo, "Selesai").
-		Group("DATE(created_at)").
+		Where("created_at >= ? AND status = ?", sevenDaysAgo, "Selesai")
+	if posType != "" {
+		queryChart = queryChart.Where("order_source = ?", posType)
+	}
+	queryChart.Group("DATE(created_at)").
 		Order("DATE(created_at) ASC").
 		Scan(&dailyData)
 		
@@ -98,12 +118,15 @@ func GetDashboardStats(c *gin.Context) {
 		Qty   int     `json:"qty"`
 	}
 	var topItems []TopItem
-	database.DB.Table("order_items").
+	queryTop := database.DB.Table("order_items").
 		Select("menus.name as name, SUM(order_items.quantity) as qty, SUM(order_items.subtotal) as total").
 		Joins("JOIN menus ON menus.id = order_items.menu_id").
 		Joins("JOIN orders ON orders.id = order_items.order_id").
-		Where("orders.status = ? AND orders.created_at >= ?", "Selesai", startOfDay).
-		Group("menus.name").
+		Where("orders.status = ? AND orders.created_at >= ?", "Selesai", startOfDay)
+	if posType != "" {
+		queryTop = queryTop.Where("orders.order_source = ?", posType)
+	}
+	queryTop.Group("menus.name").
 		Order("qty DESC").
 		Limit(5).
 		Scan(&topItems)
@@ -128,6 +151,8 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 		return
 	}
 
+	posType := c.Query("pos_type")
+
 	var totalRevenue float64
 	var totalOrders int64
 	var totalBranches int64
@@ -140,11 +165,18 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 	database.DB.Model(&models.User{}).Where("company_id = ?", companyID).Count(&totalUsers)
 
 	// Total Orders in Company (All time)
-	database.DB.Model(&models.Order{}).Where("company_id = ?", companyID).Count(&totalOrders)
+	queryOrders := database.DB.Model(&models.Order{}).Where("company_id = ?", companyID)
+	if posType != "" {
+		queryOrders = queryOrders.Where("order_source = ?", posType)
+	}
+	queryOrders.Count(&totalOrders)
 
 	// Total Revenue in Company (All time)
-	database.DB.Model(&models.Order{}).Where("company_id = ? AND status = ?", companyID, "Selesai").
-		Select("COALESCE(SUM(total_amount), 0)").Row().Scan(&totalRevenue)
+	queryRev := database.DB.Model(&models.Order{}).Where("company_id = ? AND status = ?", companyID, "Selesai")
+	if posType != "" {
+		queryRev = queryRev.Where("order_source = ?", posType)
+	}
+	queryRev.Select("COALESCE(SUM(total_amount), 0)").Row().Scan(&totalRevenue)
 
 	// Branch Performance
 	type BranchPerformance struct {
@@ -153,10 +185,18 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 		Orders  int64   `json:"orders"`
 	}
 	var branchPerf []BranchPerformance
-	database.DB.Table("branches").
-		Select("branches.name, COALESCE(SUM(orders.total_amount), 0) as revenue, COUNT(orders.id) as orders").
-		Joins("LEFT JOIN orders ON orders.branch_id = branches.id AND orders.status = 'Selesai'").
-		Where("branches.company_id = ?", companyID).
+	
+	queryBranchPerf := database.DB.Table("branches")
+	if posType != "" {
+		queryBranchPerf = queryBranchPerf.
+			Select("branches.name, COALESCE(SUM(orders.total_amount), 0) as revenue, COUNT(orders.id) as orders").
+			Joins("LEFT JOIN orders ON orders.branch_id = branches.id AND orders.status = 'Selesai' AND orders.order_source = ?", posType)
+	} else {
+		queryBranchPerf = queryBranchPerf.
+			Select("branches.name, COALESCE(SUM(orders.total_amount), 0) as revenue, COUNT(orders.id) as orders").
+			Joins("LEFT JOIN orders ON orders.branch_id = branches.id AND orders.status = 'Selesai'")
+	}
+	queryBranchPerf.Where("branches.company_id = ?", companyID).
 		Group("branches.name").
 		Order("revenue DESC").
 		Scan(&branchPerf)
@@ -179,10 +219,13 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 		Total float64 `json:"total"`
 	}
 	var dailyData []DailyRevenue
-	database.DB.Model(&models.Order{}).
+	queryChart := database.DB.Model(&models.Order{}).
 		Select("created_at::date as date, SUM(total_amount) as total").
-		Where("company_id = ? AND created_at >= ? AND status = ?", companyID, sevenDaysAgo, "Selesai").
-		Group("date").
+		Where("company_id = ? AND created_at >= ? AND status = ?", companyID, sevenDaysAgo, "Selesai")
+	if posType != "" {
+		queryChart = queryChart.Where("order_source = ?", posType)
+	}
+	queryChart.Group("date").
 		Order("date ASC").
 		Scan(&dailyData)
 
@@ -209,10 +252,13 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 		Total float64 `json:"total"`
 	}
 	var monthlyData []MonthlyRevenue
-	database.DB.Model(&models.Order{}).
+	queryMonthly := database.DB.Model(&models.Order{}).
 		Select("to_char(created_at, 'YYYY-MM') as month, SUM(total_amount) as total").
-		Where("company_id = ? AND created_at >= ? AND status = ?", companyID, twelveMonthsAgo, "Selesai").
-		Group("month").
+		Where("company_id = ? AND created_at >= ? AND status = ?", companyID, twelveMonthsAgo, "Selesai")
+	if posType != "" {
+		queryMonthly = queryMonthly.Where("order_source = ?", posType)
+	}
+	queryMonthly.Group("month").
 		Order("month ASC").
 		Scan(&monthlyData)
 
@@ -242,6 +288,29 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 	var recentBranchOrders []models.BranchOrder
 	database.DB.Where("company_id = ?", companyID).Preload("Branch").Order("created_at desc").Limit(5).Find(&recentBranchOrders)
 
+	// ─── Super User / Owner Registration Statistics ───
+	var totalRegistrations int64
+	var totalPaidRegistrations int64
+	var posTypeResto int64
+	var posTypeRetail int64
+	var posTypeJasa int64
+	var posTypeFashion int64
+
+	roleVal, existsRole := c.Get("role")
+	isSuperUser := false
+	if existsRole && roleVal == "Super User" {
+		isSuperUser = true
+		// Count total registrations
+		database.DB.Model(&models.TrialRegistration{}).Count(&totalRegistrations)
+		// Count paid registrations (either is_paid = true or status = Approved)
+		database.DB.Model(&models.TrialRegistration{}).Where("is_paid = ? OR status = ?", true, "Approved").Count(&totalPaidRegistrations)
+		// Count by POS types
+		database.DB.Model(&models.TrialRegistration{}).Where("pos_type = ?", "resto").Count(&posTypeResto)
+		database.DB.Model(&models.TrialRegistration{}).Where("pos_type = ?", "retail").Count(&posTypeRetail)
+		database.DB.Model(&models.TrialRegistration{}).Where("pos_type = ?", "jasa").Count(&posTypeJasa)
+		database.DB.Model(&models.TrialRegistration{}).Where("pos_type = ?", "fashion").Count(&posTypeFashion)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"total_revenue":      totalRevenue,
 		"total_orders":       totalOrders,
@@ -257,6 +326,15 @@ func GetExecutiveDashboardStats(c *gin.Context) {
 			"pending":   pendingOrders,
 			"approved":  approvedOrders,
 			"fulfilled": fulfilledOrders,
+		},
+		"is_superuser":             isSuperUser,
+		"total_registrations":      totalRegistrations,
+		"total_paid_registrations": totalPaidRegistrations,
+		"pos_type_counts": gin.H{
+			"resto":   posTypeResto,
+			"retail":  posTypeRetail,
+			"jasa":    posTypeJasa,
+			"fashion": posTypeFashion,
 		},
 	})
 }

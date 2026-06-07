@@ -83,6 +83,11 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 			}
 		}
 
+		cleanRole := strings.TrimSpace(role)
+		if strings.EqualFold(cleanRole, "Super User") {
+			return tx
+		}
+
 		// Filter by company first (multi-tenancy) - Mandatory for all
 		if companyExists && companyID != nil {
 			if tableName != "" {
@@ -93,7 +98,6 @@ func GetQueryScope(c *gin.Context) func(tx *gorm.DB) *gorm.DB {
 		}
 
 		// Executive and Admin can see everything within their company (all branches)
-		cleanRole := strings.TrimSpace(role)
 		if strings.EqualFold(cleanRole, "Executive") || strings.EqualFold(cleanRole, "Admin") {
 			return tx
 		}

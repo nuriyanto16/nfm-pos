@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -11,6 +12,15 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   return (
     <nav className={`navbar ${isScrolled ? 'scrolled glass' : ''}`}>
@@ -27,6 +37,18 @@ const Navbar = () => {
           <a href="/#pricing">Harga</a>
           <Link to="/blog">Blog</Link>
           <Link to="/kontak">Kontak</Link>
+          <button onClick={toggleTheme} className="btn-theme" title="Ubah Tema">
+            {theme === 'light' ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="theme-icon">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="theme-icon">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+              </svg>
+            )}
+          </button>
           <a href="/#trial" className="btn-primary">Coba Gratis</a>
         </div>
       </div>
@@ -85,6 +107,26 @@ const Navbar = () => {
         }
         .nav-links a:hover {
           color: var(--primary);
+        }
+        .btn-theme {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: var(--muted);
+          color: var(--foreground);
+          transition: all 0.3s ease;
+          border: 1px solid var(--border);
+        }
+        .btn-theme:hover {
+          background: var(--border);
+          transform: scale(1.05);
+        }
+        .theme-icon {
+          width: 18px;
+          height: 18px;
         }
         .btn-primary {
           background: var(--primary);

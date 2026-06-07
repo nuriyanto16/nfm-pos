@@ -6,9 +6,9 @@ import 'providers/cart_provider.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../../core/utils/currency_formatter.dart';
 
-final menuProvider = FutureProvider((ref) async {
+final menuProvider = FutureProvider.family<List<dynamic>, String>((ref, posType) async {
   final dio = ref.read(dioProvider);
-  final response = await dio.get('menus', queryParameters: {'available': 'true', 'limit': 100});
+  final response = await dio.get('menus', queryParameters: {'available': 'true', 'limit': 100, 'pos_type': posType});
   // Handle both standard list and paginated response
   if (response.data is Map && response.data.containsKey('rows')) {
     return response.data['rows'] as List<dynamic>;
@@ -37,9 +37,9 @@ final activePromoProvider = FutureProvider<List<dynamic>>((ref) async {
 final selectedCategoryProvider = StateProvider<int?>((ref) => null);
 final menuSearchQueryProvider = StateProvider<String>((ref) => "");
 
-final categoriesProvider = FutureProvider<List<dynamic>>((ref) async {
+final categoriesProvider = FutureProvider.family<List<dynamic>, String>((ref, posType) async {
   final dio = ref.read(dioProvider);
-  final res = await dio.get('categories');
+  final res = await dio.get('categories', queryParameters: {'pos_type': posType, 'limit': 100});
   if (res.data is Map && res.data.containsKey('rows')) {
     return res.data['rows'] as List<dynamic>;
   }
@@ -64,7 +64,21 @@ final customerSearchResultsProvider = FutureProvider<List<dynamic>>((ref) async 
 });
 
 class PosScreen extends ConsumerWidget {
-  const PosScreen({super.key});
+  final String posType;
+  const PosScreen({super.key, this.posType = 'resto'});
+
+  String _getTitle() {
+    switch (posType) {
+      case 'fashion':
+        return 'POS Fashion';
+      case 'retail':
+        return 'POS Retail / Toko';
+      case 'jasa':
+        return 'POS Jasa (Laundry/Salon)';
+      default:
+        return 'POS Resto / Cafe';
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,7 +86,7 @@ class PosScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('POS Kasir'),
+        title: Text(_getTitle()),
         automaticallyImplyLeading: false,
         actions: [
           if (cartState.items.isNotEmpty)
@@ -101,7 +115,7 @@ class PosScreen extends ConsumerWidget {
       children: [
         Expanded(
           flex: 3,
-          child: _MenuArea(ref: ref),
+          child: _MenuArea(ref: ref, posType: posType),
         ),
         Container(
           width: 360,
@@ -109,18 +123,17 @@ class PosScreen extends ConsumerWidget {
             color: Theme.of(context).colorScheme.surface,
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8)],
           ),
-          child: _CartPanel(cartState: cartState, ref: ref),
+          child: _CartPanel(cartState: cartState, ref: ref, posType: posType),
         ),
       ],
     );
   }
 
   Widget _buildMobile(BuildContext context, WidgetRef ref, CartState cartState) {
-    return _MenuArea(ref: ref);
+    return _MenuArea(ref: ref, posType: posType);
   }
 
   void _showMobileCart(BuildContext context, WidgetRef ref) {
-    final cartState = ref.read(cartProvider);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -134,7 +147,7 @@ class PosScreen extends ConsumerWidget {
           maxChildSize: 0.95,
           minChildSize: 0.4,
           expand: false,
-          builder: (_, controller) => _CartPanel(cartState: ref.watch(cartProvider), ref: ref),
+          builder: (_, controller) => _CartPanel(cartState: ref.watch(cartProvider), ref: ref, posType: posType),
         ),
       ),
     );
@@ -144,12 +157,13 @@ class PosScreen extends ConsumerWidget {
 // ─── Menu Area ────────────────────────────────────────────────────────────────
 class _MenuArea extends ConsumerWidget {
   final WidgetRef ref;
-  const _MenuArea({required this.ref});
+  final String posType;
+  const _MenuArea({required this.ref, required this.posType});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final menuAsync = ref.watch(menuProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
+    final menuAsync = ref.watch(menuProvider(posType));
+    final categoriesAsync = ref.watch(categoriesProvider(posType));
     final selectedCat = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(menuSearchQueryProvider);
     final colorScheme = Theme.of(context).colorScheme;
@@ -162,7 +176,7 @@ class _MenuArea extends ConsumerWidget {
           child: TextField(
             onChanged: (v) => ref.read(menuSearchQueryProvider.notifier).state = v,
             decoration: InputDecoration(
-              hintText: 'Cari menu...',
+              hintText: 'Cari item...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               filled: true,
@@ -217,7 +231,7 @@ class _MenuArea extends ConsumerWidget {
               }).toList();
 
               if (filtered.isEmpty) {
-                return const Center(child: Text('Tidak ada menu tersedia'));
+                return const Center(child: Text('Tidak ada item tersedia'));
               }
 
               return GridView.builder(
@@ -231,7 +245,7 @@ class _MenuArea extends ConsumerWidget {
                 itemCount: filtered.length,
                 itemBuilder: (context, index) {
                   final menu = filtered[index];
-                  return _MenuCard(menu: menu, index: index, onTap: () {
+                  return _MenuCard(menu: menu, index: index, posType: posType, onTap: () {
                     ref.read(cartProvider.notifier).addItem(menu);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text('${menu['name']} ditambahkan'),
@@ -255,8 +269,9 @@ class _MenuCard extends ConsumerWidget {
   final Map<String, dynamic> menu;
   final int index;
   final VoidCallback onTap;
+  final String posType;
 
-  const _MenuCard({required this.menu, required this.onTap, required this.index});
+  const _MenuCard({required this.menu, required this.onTap, required this.index, required this.posType});
 
   String _getDummyImage() {
     final colors = ['FF5733', '33FF57', '3357FF', 'F333FF', 'FF33A8', '33FFF5'];
@@ -329,11 +344,26 @@ class _MenuCard extends ConsumerWidget {
   }
 
   Widget _buildPlaceholderIcon(ColorScheme colorScheme) {
+    IconData itemIcon;
+    switch (posType) {
+      case 'fashion':
+        itemIcon = Icons.checkroom_rounded;
+        break;
+      case 'retail':
+        itemIcon = Icons.storefront_rounded;
+        break;
+      case 'jasa':
+        itemIcon = Icons.dry_cleaning_rounded;
+        break;
+      default:
+        itemIcon = Icons.restaurant_menu_rounded;
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.restaurant_menu_rounded, size: 40, color: colorScheme.primary.withOpacity(0.3)),
+          Icon(itemIcon, size: 40, color: colorScheme.primary.withOpacity(0.3)),
           const SizedBox(height: 4),
           Text(
             menu['name'].toString().substring(0, 1).toUpperCase(),
@@ -353,8 +383,9 @@ class _MenuCard extends ConsumerWidget {
 class _CartPanel extends ConsumerWidget {
   final CartState cartState;
   final WidgetRef ref;
+  final String posType;
 
-  const _CartPanel({required this.cartState, required this.ref});
+  const _CartPanel({required this.cartState, required this.ref, required this.posType});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -414,29 +445,31 @@ class _CartPanel extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: [
-              tablesAsync.when(
-                loading: () => const LinearProgressIndicator(),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (tables) => DropdownButtonFormField<int>(
-                  value: cartState.tableId,
-                  decoration: const InputDecoration(
-                    labelText: 'Meja (opsional)',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    prefixIcon: Icon(Icons.table_restaurant_outlined, size: 20),
+              if (posType == 'resto') ...[
+                tablesAsync.when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (tables) => DropdownButtonFormField<int>(
+                    value: cartState.tableId,
+                    decoration: const InputDecoration(
+                      labelText: 'Meja (opsional)',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                      prefixIcon: Icon(Icons.table_restaurant_outlined, size: 20),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int>(value: null, child: Text('Take Away')),
+                      ...tables.where((t) => t['status'] == 'Kosong' || t['id'] == cartState.tableId)
+                          .map<DropdownMenuItem<int>>((t) => DropdownMenuItem(
+                            value: t['id'],
+                            child: Text('Meja ${t['table_number']} (${t['status']})'),
+                          )),
+                    ],
+                    onChanged: (v) => ref.read(cartProvider.notifier).setTable(v),
                   ),
-                  items: [
-                    const DropdownMenuItem<int>(value: null, child: Text('Take Away')),
-                    ...tables.where((t) => t['status'] == 'Kosong' || t['id'] == cartState.tableId)
-                        .map<DropdownMenuItem<int>>((t) => DropdownMenuItem(
-                          value: t['id'],
-                          child: Text('Meja ${t['table_number']} (${t['status']})'),
-                        )),
-                  ],
-                  onChanged: (v) => ref.read(cartProvider.notifier).setTable(v),
                 ),
-              ),
-              const SizedBox(height: 8),
+                const SizedBox(height: 8),
+              ],
               const SizedBox(height: 8),
               // Optimal Customer Autocomplete
               LayoutBuilder(
@@ -676,7 +709,7 @@ class _CartPanel extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: cartState.items.isEmpty ? null : () => context.push('/payment'),
+                      onPressed: cartState.items.isEmpty ? null : () => context.push('/payment?type=$posType'),
                       icon: const Icon(Icons.payment),
                       label: const Text('Bayar'),
                       style: FilledButton.styleFrom(
@@ -704,6 +737,7 @@ class _CartPanel extends ConsumerWidget {
         'customer_name': cart.customerName ?? 'Pelanggan Umum',
         'discount_amount': cart.discountAmount,
         'notes': cart.notes ?? '',
+        'order_source': posType,
         'items': cart.items.map((item) => {
           'menu_id': item.menuId,
           'quantity': item.quantity,

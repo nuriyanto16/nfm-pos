@@ -23,6 +23,7 @@ type CreateOrderRequest struct {
 	Notes          string             `json:"notes"`
 	DiscountAmount float64            `json:"discount_amount"`
 	ShippingFee    float64            `json:"shipping_fee"`
+	OrderSource    string             `json:"order_source"`
 	Items          []models.OrderItem `json:"items" binding:"required"`
 }
 
@@ -158,6 +159,14 @@ func CreateOrder(c *gin.Context) {
 		}
 	}
 
+	orderSource := req.OrderSource
+	if orderSource == "" {
+		orderSource = "Resto"
+	} else {
+		// Capitalize first letter
+		orderSource = strings.Title(strings.ToLower(orderSource))
+	}
+
 	order := models.Order{
 		CompanyID:           finalCompanyID,
 		BranchID:            finalBranchID,
@@ -173,6 +182,7 @@ func CreateOrder(c *gin.Context) {
 		ShippingFee:         req.ShippingFee,
 		Notes:               req.Notes,
 		Items:               req.Items,
+		OrderSource:         orderSource,
 	}
 
 	// Update table status if TableID is provided
@@ -192,36 +202,61 @@ func CreateOrder(c *gin.Context) {
 		}
 	}
 
-	// Deduct ingredients (Optimized)
-	var menuIDs []uint
-	qtyMap := make(map[uint]int)
+	// Deduct stock based on POS Type (retail/fashion = direct menu stock, resto/jasa = ingredients recipe)
 	for _, item := range order.Items {
-		menuIDs = append(menuIDs, item.MenuID)
-		qtyMap[item.MenuID] += item.Quantity
-	}
+		var menu models.Menu
+		if err := tx.First(&menu, item.MenuID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Produk tidak ditemukan"})
+			return
+		}
 
-	var allRecipes []models.MenuIngredient
-	if err := tx.Where("menu_id IN ?", menuIDs).Find(&allRecipes).Error; err == nil {
-		for _, ingredient := range allRecipes {
-			qtyToDeduct := ingredient.QtyUsed * float64(qtyMap[ingredient.MenuID])
-			if err := tx.Model(&models.Ingredient{}).Where("id = ?", ingredient.IngredientID).
-				Update("stock", gorm.Expr("stock - ?", qtyToDeduct)).Error; err != nil {
+		if menu.POSType == "retail" || menu.POSType == "fashion" {
+			// Direct product stock check & deduction
+			if menu.Stock < item.Quantity {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ingredient stock"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Stok produk '%s' tidak mencukupi (Tersisa: %d)", menu.Name, menu.Stock)})
 				return
 			}
 
-			// Log Stock History
-			tx.Create(&models.StockHistory{
-				CompanyID:    order.CompanyID,
-				BranchID:     order.BranchID,
-				IngredientID: ingredient.IngredientID,
-				OrderID:      &order.ID,
-				Type:         "OUT",
-				Quantity:     qtyToDeduct,
-				UserID:       order.UserID,
-				Notes:        "Order #" + strconv.FormatUint(uint64(order.ID), 10),
-			})
+			if err := tx.Model(&menu).Update("stock", gorm.Expr("stock - ?", item.Quantity)).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui stok produk"})
+				return
+			}
+		} else if menu.POSType == "resto" || menu.POSType == "jasa" {
+			// Resto/Jasa uses Ingredient-based stock deduction (if ingredients exist)
+			var recipes []models.MenuIngredient
+			if err := tx.Preload("Ingredient").Where("menu_id = ?", menu.ID).Find(&recipes).Error; err == nil {
+				for _, recipe := range recipes {
+					qtyToDeduct := recipe.QtyUsed * float64(item.Quantity)
+					// Check ingredient stock
+					if recipe.Ingredient.Stock < qtyToDeduct {
+						tx.Rollback()
+						c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Stok bahan '%s' tidak mencukupi untuk menu '%s'", recipe.Ingredient.Name, menu.Name)})
+						return
+					}
+
+					if err := tx.Model(&models.Ingredient{}).Where("id = ?", recipe.IngredientID).
+						Update("stock", gorm.Expr("stock - ?", qtyToDeduct)).Error; err != nil {
+						tx.Rollback()
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui stok bahan baku"})
+						return
+					}
+
+					// Log Stock History
+					tx.Create(&models.StockHistory{
+						CompanyID:    order.CompanyID,
+						BranchID:     order.BranchID,
+						IngredientID: recipe.IngredientID,
+						OrderID:      &order.ID,
+						Type:         "OUT",
+						Quantity:     qtyToDeduct,
+						UserID:       order.UserID,
+						Notes:        "Order #" + strconv.FormatUint(uint64(order.ID), 10),
+					})
+				}
+			}
 		}
 	}
 
@@ -449,26 +484,35 @@ func VoidOrder(c *gin.Context) {
 		return
 	}
 
-	// Revert Ingredients Stock
+	// Revert stock based on POS Type
 	for _, item := range order.Items {
-		var recipe []models.MenuIngredient
-		if err := tx.Where("menu_id = ?", item.MenuID).Find(&recipe).Error; err == nil {
-			for _, ingredient := range recipe {
-				qtyToRestore := ingredient.QtyUsed * float64(item.Quantity)
-				tx.Model(&models.Ingredient{}).Where("id = ?", ingredient.IngredientID).
-					Update("stock", gorm.Expr("stock + ?", qtyToRestore))
+		var menu models.Menu
+		if err := tx.First(&menu, item.MenuID).Error; err == nil {
+			if menu.POSType == "retail" || menu.POSType == "fashion" {
+				// Restore direct product stock
+				tx.Model(&menu).Update("stock", gorm.Expr("stock + ?", item.Quantity))
+			} else if menu.POSType == "resto" || menu.POSType == "jasa" {
+				// Restore ingredients stock
+				var recipe []models.MenuIngredient
+				if err := tx.Where("menu_id = ?", item.MenuID).Find(&recipe).Error; err == nil {
+					for _, ingredient := range recipe {
+						qtyToRestore := ingredient.QtyUsed * float64(item.Quantity)
+						tx.Model(&models.Ingredient{}).Where("id = ?", ingredient.IngredientID).
+							Update("stock", gorm.Expr("stock + ?", qtyToRestore))
 
-				// Log Stock History
-				tx.Create(&models.StockHistory{
-					CompanyID:    order.CompanyID,
-					BranchID:     order.BranchID,
-					IngredientID: ingredient.IngredientID,
-					OrderID:      &order.ID,
-					Type:         "VOID",
-					Quantity:     qtyToRestore,
-					UserID:       c.GetUint("userID"),
-					Notes:        "Void Order #" + strconv.FormatUint(uint64(order.ID), 10),
-				})
+						// Log Stock History
+						tx.Create(&models.StockHistory{
+							CompanyID:    order.CompanyID,
+							BranchID:     order.BranchID,
+							IngredientID: ingredient.IngredientID,
+							OrderID:      &order.ID,
+							Type:         "VOID",
+							Quantity:     qtyToRestore,
+							UserID:       c.GetUint("userID"),
+							Notes:        "Void Order #" + strconv.FormatUint(uint64(order.ID), 10),
+						})
+					}
+				}
 			}
 		}
 	}

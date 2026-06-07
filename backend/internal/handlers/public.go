@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"pos-resto/backend/database"
@@ -117,14 +118,30 @@ func PublicGetMenuByBranch(c *gin.Context) {
 		return
 	}
 
-	// Get categories for this branch/company
+	var company models.Company
+	if err := database.DB.First(&company, branch.CompanyID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+		return
+	}
+
+	posType := "resto"
+	bc := strings.ToLower(company.BusinessCategory)
+	if strings.Contains(bc, "retail") || strings.Contains(bc, "toko") {
+		posType = "retail"
+	} else if strings.Contains(bc, "jasa") || strings.Contains(bc, "laundry") || strings.Contains(bc, "salon") || strings.Contains(bc, "cuci") {
+		posType = "jasa"
+	} else if strings.Contains(bc, "fashion") {
+		posType = "fashion"
+	}
+
+	// Get categories for this branch/company matching the posType
 	var categories []models.Category
-	database.DB.Where("company_id = ? AND (branch_id = ? OR branch_id IS NULL)", branch.CompanyID, branch.ID).
+	database.DB.Where("company_id = ? AND (branch_id = ? OR branch_id IS NULL) AND pos_type = ?", branch.CompanyID, branch.ID, posType).
 		Order("name").Find(&categories)
 
-	// Get available menus
+	// Get available menus matching the posType
 	var menus []models.Menu
-	database.DB.Where("company_id = ? AND (branch_id = ? OR branch_id IS NULL) AND is_available = true", branch.CompanyID, branch.ID).
+	database.DB.Where("company_id = ? AND (branch_id = ? OR branch_id IS NULL) AND is_available = true AND pos_type = ?", branch.CompanyID, branch.ID, posType).
 		Preload("Category").Order("name").Find(&menus)
 
 	// Group by category

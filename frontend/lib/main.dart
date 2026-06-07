@@ -42,6 +42,7 @@ import 'features/chatbot/presentation/chatbot_history_screen.dart';
 import 'features/chatbot/presentation/knowledge_management_screen.dart';
 import 'features/management/presentation/registration_management_screen.dart';
 import 'features/ingredient/presentation/stock_history_screen.dart';
+import 'features/management/presentation/documentation_screen.dart';
 import 'shared/widgets/sidebar_layout.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/theme_provider.dart';
@@ -73,14 +74,18 @@ final _router = GoRouter(
         ),
         GoRoute(
           path: '/pos',
-          builder: (context, state) => const PosScreen(),
+          builder: (context, state) {
+            final type = state.uri.queryParameters['type'] ?? 'resto';
+            return PosScreen(posType: type);
+          },
         ),
         GoRoute(
           path: '/payment',
           builder: (context, state) {
             final idStr = state.uri.queryParameters['orderId'];
             final orderId = idStr != null ? int.tryParse(idStr) : null;
-            return PaymentScreen(orderId: orderId);
+            final type = state.uri.queryParameters['type'] ?? 'resto';
+            return PaymentScreen(orderId: orderId, posType: type);
           },
         ),
         GoRoute(
@@ -113,7 +118,10 @@ final _router = GoRouter(
         // Management routes
         GoRoute(
           path: '/menus',
-          builder: (context, state) => const MenuManagementScreen(),
+          builder: (context, state) {
+            final type = state.uri.queryParameters['type'] ?? 'resto';
+            return MenuManagementScreen(initialType: type);
+          },
         ),
         GoRoute(
           path: '/promos',
@@ -226,6 +234,10 @@ final _router = GoRouter(
         GoRoute(
           path: '/registrations',
           builder: (context, state) => const RegistrationManagementScreen(),
+        ),
+        GoRoute(
+          path: '/documentation',
+          builder: (context, state) => const DocumentationScreen(),
         ),
       ],
     ),

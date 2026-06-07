@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Features from './components/Features';
+import Ecosystem from './components/Ecosystem';
 import Pricing from './components/Pricing';
 import TrialForm from './components/TrialForm';
 import Footer from './components/Footer';
@@ -17,21 +18,26 @@ import PusatBantuan from './pages/PusatBantuan';
 import Kontak from './pages/Kontak';
 import KebijakanPrivasi from './pages/KebijakanPrivasi';
 
-const HomePage = () => (
-  <div className="app">
-    <Navbar />
-    <main>
-      <Hero />
-      <Features />
-      <Pricing />
-      <TrialForm />
-    </main>
-    <Footer />
-    <ChatbotWidget />
-    <WhatsAppFloat />
-    <style>{`.app { overflow-x: hidden; }`}</style>
-  </div>
-);
+const HomePage = () => {
+  const [selectedPlan, setSelectedPlan] = React.useState('UMKM');
+
+  return (
+    <div className="app">
+      <Navbar />
+      <main>
+        <Hero />
+        <Features />
+        <Ecosystem />
+        <Pricing onSelectPlan={setSelectedPlan} />
+        <TrialForm selectedPlan={selectedPlan} onSelectPlan={setSelectedPlan} />
+      </main>
+      <Footer />
+      <ChatbotWidget />
+      <WhatsAppFloat />
+      <style>{`.app { overflow-x: hidden; }`}</style>
+    </div>
+  );
+};
 
 function App() {
   return (

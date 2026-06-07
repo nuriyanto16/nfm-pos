@@ -26,6 +26,9 @@ func GetMenus(c *gin.Context) {
 	if available := c.Query("available"); available == "true" {
 		db = db.Where("is_available = true")
 	}
+	if posType := c.Query("pos_type"); posType != "" {
+		db = db.Where("pos_type = ?", posType)
+	}
 
 	pagination, err := Paginate(c, db, &menus)
 	if err != nil {
@@ -55,6 +58,9 @@ func CreateMenu(c *gin.Context) {
 	// Automatically set CompanyID from context
 	if companyID, exists := c.Get("companyID"); exists {
 		menu.CompanyID = companyID.(uint)
+	}
+	if menu.POSType == "" {
+		menu.POSType = "resto"
 	}
 	
 	if err := database.DB.Create(&menu).Error; err != nil {
@@ -108,6 +114,10 @@ func GetCategories(c *gin.Context) {
 	var categories []models.Category
 	db := database.DB.Model(&models.Category{}).Scopes(middleware.GetQueryScope(c))
 
+	if posType := c.Query("pos_type"); posType != "" {
+		db = db.Where("pos_type = ?", posType)
+	}
+
 	pagination, err := Paginate(c, db, &categories)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
@@ -126,6 +136,9 @@ func CreateCategory(c *gin.Context) {
 	// Automatically set CompanyID from context
 	if companyID, exists := c.Get("companyID"); exists {
 		cat.CompanyID = companyID.(uint)
+	}
+	if cat.POSType == "" {
+		cat.POSType = "resto"
 	}
 
 	if err := database.DB.Create(&cat).Error; err != nil {

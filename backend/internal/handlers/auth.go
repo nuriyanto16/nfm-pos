@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"pos-resto/backend/database"
@@ -94,6 +95,55 @@ func Login(c *gin.Context) {
 		},
 	})
 }
+
+func shouldShowMenuForCategory(path string, isHeader bool, title string, category string) bool {
+	cat := strings.ToLower(category)
+	p := strings.ToLower(path)
+
+	// Resto-specific category match
+	isRestoCompany := strings.Contains(cat, "resto") || strings.Contains(cat, "f&b") || cat == ""
+
+	// Retail-specific category match (includes retail/toko/fashion/lainnya)
+	isRetailCompany := strings.Contains(cat, "retail") || strings.Contains(cat, "toko") || strings.Contains(cat, "fashion") || strings.Contains(cat, "lain")
+
+	// Jasa-specific category match
+	isJasaCompany := strings.Contains(cat, "jasa") || strings.Contains(cat, "laundry") || strings.Contains(cat, "salon") || strings.Contains(cat, "cuci")
+
+	// If Resto company: hide other POS modules
+	if isRestoCompany {
+		if strings.Contains(p, "type=fashion") || strings.Contains(p, "type=retail") || strings.Contains(p, "type=jasa") {
+			return false
+		}
+	}
+
+	// If Retail / Fashion company: hide Resto and Jasa specific modules
+	if isRetailCompany {
+		if strings.Contains(p, "type=resto") || strings.Contains(p, "type=jasa") ||
+			strings.Contains(p, "kitchen") || strings.Contains(p, "monitoring-tables") ||
+			strings.Contains(p, "layout-tables") || strings.Contains(p, "manage-tables") {
+			return false
+		}
+		// For retail, if it's fashion type, show fashion POS. If it's retail type, show retail POS.
+		if strings.Contains(cat, "fashion") && strings.Contains(p, "type=retail") {
+			return false
+		}
+		if (strings.Contains(cat, "retail") || strings.Contains(cat, "toko")) && strings.Contains(p, "type=fashion") {
+			return false
+		}
+	}
+
+	// If Jasa company: hide Resto and Retail/Fashion specific modules
+	if isJasaCompany {
+		if strings.Contains(p, "type=resto") || strings.Contains(p, "type=retail") || strings.Contains(p, "type=fashion") ||
+			strings.Contains(p, "kitchen") || strings.Contains(p, "monitoring-tables") ||
+			strings.Contains(p, "layout-tables") || strings.Contains(p, "manage-tables") {
+			return false
+		}
+	}
+
+	return true
+}
+
 func GetMe(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -102,12 +152,25 @@ func GetMe(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := database.DB.Preload("Role.Menus", func(db *gorm.DB) *gorm.DB {
+	if err := database.DB.Preload("Company").Preload("Role.Menus", func(db *gorm.DB) *gorm.DB {
 		return db.Order("sort_order ASC")
 	}).First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
+
+	category := "F&B (Resto/Cafe)"
+	if user.Company != nil && user.Company.BusinessCategory != "" {
+		category = user.Company.BusinessCategory
+	}
+
+	var filteredMenus []models.SidebarMenu
+	for _, m := range user.Role.Menus {
+		if user.Role.Name == "Super User" || shouldShowMenuForCategory(m.Path, m.IsHeader, m.Title, category) {
+			filteredMenus = append(filteredMenus, m)
+		}
+	}
+	user.Role.Menus = filteredMenus
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": user,

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"pos-resto/backend/internal/models"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -73,6 +74,7 @@ func ConnectDB() {
 
 	SeedAccounts()
 	SeedSidebarMenus()
+	SeedSuperUser()
 
 	// Update orders status check constraint to include 'Siap'
 	DB.Exec(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;`)
@@ -116,7 +118,7 @@ func SeedSidebarMenus() {
 		operational := models.SidebarMenu{Title: "OPERASIONAL", IsHeader: true, SortOrder: 2}
 		DB.Create(&operational)
 
-		DB.Create(&models.SidebarMenu{Title: "Point of Sale", Path: "/pos", Icon: "shopping_cart", SortOrder: 3})
+		DB.Create(&models.SidebarMenu{Title: "POS Resto", Path: "/pos?type=resto", Icon: "restaurant", SortOrder: 3})
 		DB.Create(&models.SidebarMenu{Title: "Kitchen Display", Path: "/kitchen", Icon: "kitchen", SortOrder: 4})
 		DB.Create(&models.SidebarMenu{Title: "Daftar Pesanan", Path: "/orders", Icon: "receipt_long", SortOrder: 5})
 
@@ -128,7 +130,7 @@ func SeedSidebarMenus() {
 
 		master := models.SidebarMenu{Title: "MASTER DATA", IsHeader: true, SortOrder: 20}
 		DB.Create(&master)
-		DB.Create(&models.SidebarMenu{Title: "Manajemen Menu", Path: "/menus", Icon: "restaurant_menu", SortOrder: 21})
+		DB.Create(&models.SidebarMenu{Title: "Manajemen Menu Resto", Path: "/menus?type=resto", Icon: "restaurant_menu", SortOrder: 21})
 		DB.Create(&models.SidebarMenu{Title: "Kategori", Path: "/menus", Icon: "category", SortOrder: 22})
 		DB.Create(&models.SidebarMenu{Title: "Meja", Path: "/manage-tables", Icon: "table_restaurant", SortOrder: 23})
 		DB.Create(&models.SidebarMenu{Title: "Pelanggan", Path: "/customers", Icon: "person", SortOrder: 24})
@@ -145,6 +147,14 @@ func SeedSidebarMenus() {
 
 	// Ensure new menus exist
 	newMenus := []models.SidebarMenu{
+		{Title: "POS Resto", Path: "/pos?type=resto", Icon: "restaurant", SortOrder: 3},
+		{Title: "POS Fashion", Path: "/pos?type=fashion", Icon: "shopping_bag", SortOrder: 3},
+		{Title: "POS Retail/Toko", Path: "/pos?type=retail", Icon: "storefront", SortOrder: 3},
+		{Title: "POS Jasa", Path: "/pos?type=jasa", Icon: "dry_cleaning", SortOrder: 3},
+		{Title: "Manajemen Menu Resto", Path: "/menus?type=resto", Icon: "restaurant_menu", SortOrder: 21},
+		{Title: "Manajemen Barang (Fashion)", Path: "/menus?type=fashion", Icon: "shopping_bag", SortOrder: 21},
+		{Title: "Manajemen Barang (Retail)", Path: "/menus?type=retail", Icon: "storefront", SortOrder: 21},
+		{Title: "Manajemen Layanan Jasa", Path: "/menus?type=jasa", Icon: "dry_cleaning", SortOrder: 21},
 		{Title: "Monitoring Meja", Path: "/monitoring-tables", Icon: "monitor", SortOrder: 26},
 		{Title: "Denah Meja", Path: "/layout-tables", Icon: "map", SortOrder: 27},
 		{Title: "Pesanan Cabang", Path: "/inventory/branch-orders", Icon: "local_shipping", SortOrder: 62},
@@ -161,6 +171,17 @@ func SeedSidebarMenus() {
 		}
 	}
 
+	// Update SortOrder for existing POS and management menus in database to sync layouts
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 3 WHERE path = '/pos?type=resto';`)
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 3 WHERE path = '/pos?type=fashion';`)
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 3 WHERE path = '/pos?type=retail';`)
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 3 WHERE path = '/pos?type=jasa';`)
+
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 21 WHERE path = '/menus?type=resto';`)
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 21 WHERE path = '/menus?type=fashion';`)
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 21 WHERE path = '/menus?type=retail';`)
+	DB.Exec(`UPDATE sidebar_menus SET sort_order = 21 WHERE path = '/menus?type=jasa';`)
+
 	// Always assign all menus to Admin role (including any new ones added via UI)
 	var allMenus []models.SidebarMenu
 	DB.Find(&allMenus)
@@ -170,6 +191,13 @@ func SeedSidebarMenus() {
 		DB.Create(&adminRole)
 	}
 	DB.Model(&adminRole).Association("Menus").Replace(allMenus)
+
+	var superUserRole models.Role
+	if err := DB.Where("name = ?", "Super User").First(&superUserRole).Error; err != nil {
+		superUserRole = models.Role{Name: "Super User", Description: "Owner dengan akses penuh ke seluruh menu dan sistem"}
+		DB.Create(&superUserRole)
+	}
+	DB.Model(&superUserRole).Association("Menus").Replace(allMenus)
 }
 
 func SeedAccounts() {
@@ -188,6 +216,40 @@ func SeedAccounts() {
 		var existing models.Account
 		if err := DB.Where("code = ?", acc.Code).First(&existing).Error; err != nil {
 			DB.Create(&acc)
+		}
+	}
+}
+
+func SeedSuperUser() {
+	var count int64
+	DB.Model(&models.User{}).Where("username = ?", "superuser").Count(&count)
+	if count == 0 {
+		log.Println("Seeding default Super User...")
+		
+		var superRole models.Role
+		if err := DB.Where("name = ?", "Super User").First(&superRole).Error; err != nil {
+			log.Printf("Warning: Super User role not found, skipping user seed: %v", err)
+			return
+		}
+
+		hash, err := bcrypt.GenerateFromPassword([]byte("superuser123"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("Warning: Failed to hash superuser password: %v", err)
+			return
+		}
+
+		superUser := models.User{
+			CompanyID:    1, // Placeholder
+			FullName:     "Super User (Owner)",
+			Username:     "superuser",
+			PasswordHash: string(hash),
+			RoleID:       superRole.ID,
+			IsActive:     true,
+		}
+		if err := DB.Create(&superUser).Error; err != nil {
+			log.Printf("Warning: Failed to create superuser: %v", err)
+		} else {
+			log.Println("Super User seeded successfully (username: superuser, password: superuser123)")
 		}
 	}
 }

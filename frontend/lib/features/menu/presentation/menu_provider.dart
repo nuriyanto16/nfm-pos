@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
 import 'dart:async';
 
+final menuPosTypeProvider = StateProvider<String>((ref) => 'resto');
+
 class CommonPagingState {
   final List<dynamic> items;
   final int currentPage;
@@ -54,7 +56,7 @@ class MenuNotifier extends StateNotifier<CommonPagingState> {
     fetchMenus();
   }
 
-  Future<void> fetchMenus({int? page, String? search}) async {
+  Future<void> fetchMenus({int? page, String? search, String? posType}) async {
     state = state.copyWith(isLoading: true);
     final dio = ref.read(dioProvider);
     
@@ -62,6 +64,7 @@ class MenuNotifier extends StateNotifier<CommonPagingState> {
       'page': page ?? state.currentPage,
       'search': search ?? state.searchQuery,
       'limit': 12,
+      'pos_type': posType ?? ref.read(menuPosTypeProvider),
     };
 
     try {
@@ -93,6 +96,10 @@ class MenuNotifier extends StateNotifier<CommonPagingState> {
     if (page == state.currentPage) return;
     fetchMenus(page: page);
   }
+
+  void setPosType(String posType) {
+    fetchMenus(page: 1, posType: posType);
+  }
 }
 
 final menuManagementProvider = StateNotifierProvider<MenuNotifier, CommonPagingState>((ref) {
@@ -115,13 +122,14 @@ class CategoryNotifier extends StateNotifier<CommonPagingState> {
     fetchCategories();
   }
 
-  Future<void> fetchCategories({int? page}) async {
+  Future<void> fetchCategories({int? page, String? posType}) async {
     state = state.copyWith(isLoading: true);
     final dio = ref.read(dioProvider);
     
     final queryParams = {
       'page': page ?? state.currentPage,
       'limit': 10,
+      'pos_type': posType ?? ref.read(menuPosTypeProvider),
     };
 
     try {

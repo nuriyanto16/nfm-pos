@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Pricing = () => {
+const Pricing = ({ onSelectPlan }) => {
   const plans = [
     {
       name: 'UMKM',
@@ -49,7 +49,11 @@ const Pricing = () => {
                   <li key={j}><span className="check">✓</span> {f}</li>
                 ))}
               </ul>
-              <a href="#trial" className={`btn-plan ${plan.recommended ? 'btn-plan-primary' : 'btn-plan-secondary'}`}>
+              <a 
+                href="#trial" 
+                onClick={() => onSelectPlan && onSelectPlan(plan.name)}
+                className={`btn-plan ${plan.recommended ? 'btn-plan-primary' : 'btn-plan-secondary'}`}
+              >
                 {plan.cta}
               </a>
             </div>

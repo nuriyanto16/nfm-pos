@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/dio_client.dart';
 import '../../features/settings/presentation/providers/settings_provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'floating_chatbot.dart';
 
 // ─── User Info & Menu Provider ─────────────────────────────────────────────────
@@ -46,6 +45,11 @@ IconData _getIconData(String? name) {
     case 'manage_accounts': return Icons.manage_accounts;
     case 'app_registration': return Icons.app_registration;
     case 'group_add': return Icons.group_add;
+    case 'shopping_bag': return Icons.shopping_bag;
+    case 'storefront': return Icons.storefront;
+    case 'dry_cleaning': return Icons.dry_cleaning;
+    case 'restaurant': return Icons.restaurant;
+    case 'menu_book': return Icons.menu_book_rounded;
     default: return Icons.circle;
   }
 }
@@ -73,7 +77,7 @@ class SidebarLayout extends ConsumerStatefulWidget {
 class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
+    final location = GoRouterState.of(context).uri.toString();
     final isWide = MediaQuery.of(context).size.width >= 900;
     final sessionAsync = ref.watch(cashierSessionProvider);
     final authMeAsync = ref.watch(authMeProvider);
@@ -84,10 +88,19 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
       data: (user) {
         final menus = List<dynamic>.from(user['role']?['menus'] as List? ?? []);
         
+        final Widget layout;
         if (!isWide) {
-          return _buildMobileLayout(context, location, sessionAsync, user, menus);
+          layout = _buildMobileLayout(context, location, sessionAsync, user, menus);
+        } else {
+          layout = _buildDesktopLayout(context, location, sessionAsync, user, menus);
         }
-        return _buildDesktopLayout(context, location, sessionAsync, user, menus);
+
+        return Stack(
+          children: [
+            layout,
+            const FloatingChatbot(),
+          ],
+        );
       },
     );
   }
@@ -95,22 +108,17 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
   Widget _buildDesktopLayout(
       BuildContext context, String location, AsyncValue<Map<String, dynamic>?> sessionAsync, Map<String, dynamic> user, List<dynamic> menus) {
     return Scaffold(
-      body: Stack(
+      body: Row(
         children: [
-          Row(
-            children: [
-              _DesktopSidebar(
-                location: location,
-                user: user,
-                menus: menus,
-                sessionAsync: sessionAsync,
-                onLogout: _logout,
-                onSessionAction: _handleSessionAction,
-              ),
-              Expanded(child: widget.child),
-            ],
+          _DesktopSidebar(
+            location: location,
+            user: user,
+            menus: menus,
+            sessionAsync: sessionAsync,
+            onLogout: _logout,
+            onSessionAction: _handleSessionAction,
           ),
-          const FloatingChatbot(),
+          Expanded(child: widget.child),
         ],
       ),
     );
@@ -143,12 +151,7 @@ class _SidebarLayoutState extends ConsumerState<SidebarLayout> {
         onLogout: _logout,
         onSessionAction: _handleSessionAction,
       ),
-      body: Stack(
-        children: [
-          widget.child,
-          const FloatingChatbot(),
-        ],
-      ),
+      body: widget.child,
     );
   }
 
@@ -697,7 +700,7 @@ class _MobileDrawer extends ConsumerWidget {
                     ),
                   );
                 }
-                final isSelected = location == menu['path'];
+                final isSelected = _isMenuSelected(location, menu['path'] ?? '');
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   child: ListTile(
@@ -760,7 +763,7 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = location == path;
+    final isSelected = _isMenuSelected(location, path);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -796,4 +799,16 @@ class _NavItem {
   final String label;
 
   const _NavItem(this.path, this.icon, this.selectedIcon, this.label);
+}
+
+bool _isMenuSelected(String location, String path) {
+  final currentUri = Uri.parse(location);
+  final targetUri = Uri.parse(path);
+  if (currentUri.path != targetUri.path) return false;
+  
+  final targetType = targetUri.queryParameters['type'];
+  if (targetType == null) return true;
+  
+  final currentType = currentUri.queryParameters['type'] ?? 'resto';
+  return currentType == targetType;
 }

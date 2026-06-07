@@ -34,6 +34,8 @@ type Company struct {
 	LogoURL               string    `json:"logo_url"`
 	IsActive              bool      `gorm:"default:true" json:"is_active"`
 	SubscriptionPlan      string    `gorm:"default:'Free';type:varchar(20)" json:"subscription_plan"` // Free, Pro, Enterprise
+	BusinessCategory      string    `gorm:"type:varchar(100);default:'F&B (Resto/Cafe)'" json:"business_category"`
+	POSType               string    `gorm:"type:varchar(50);default:'resto'" json:"pos_type"`
 	TransactionLimit      int       `gorm:"default:100" json:"transaction_limit"`
 	PaymentGatewayWebhook string    `json:"payment_gateway_webhook"`
 	PaymentGatewayApiKey  string    `json:"payment_gateway_api_key"`
@@ -56,6 +58,7 @@ type Branch struct {
 	OpenTime  string    `gorm:"type:time" json:"open_time"`
 	CloseTime string    `gorm:"type:time" json:"close_time"`
 	IsActive  bool      `gorm:"default:true" json:"is_active"`
+	POSType   string    `gorm:"type:varchar(50);default:'resto'" json:"pos_type"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -82,6 +85,7 @@ type Category struct {
 	BranchID    *uint  `json:"branch_id"`
 	Name        string `gorm:"uniqueIndex:idx_company_category_name;not null;type:varchar(100)" json:"name"`
 	Description string `json:"description"`
+	POSType     string `gorm:"type:varchar(50);default:'resto'" json:"pos_type"`
 }
 
 type Menu struct {
@@ -96,6 +100,7 @@ type Menu struct {
 	Stock       int       `gorm:"default:0" json:"stock"`
 	ImageURL    string    `json:"image_url"`
 	IsAvailable bool      `gorm:"default:true" json:"is_available"`
+	POSType     string    `gorm:"type:varchar(50);default:'resto'" json:"pos_type"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -452,13 +457,16 @@ type BranchOrderItem struct {
 // ─── Trial Registration (Landing Page) ────────────────────────────────────────
 
 type TrialRegistration struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	FullName     string    `gorm:"type:varchar(100)" json:"full_name"`
-	Email        string    `gorm:"type:varchar(100)" json:"email"`
-	Phone        string    `gorm:"type:varchar(20)" json:"phone"`
-	BusinessName string    `gorm:"type:varchar(150)" json:"business_name"`
-	BusinessAddress string  `gorm:"type:text" json:"business_address"`
-	BusinessCategory string `gorm:"type:varchar(50)" json:"business_category"`
-	Status       string    `gorm:"default:'Pending';type:varchar(20)" json:"status"` // Pending, Approved, Rejected
-	CreatedAt    time.Time `json:"created_at"`
+	ID              uint      `gorm:"primaryKey" json:"id"`
+	FullName        string    `gorm:"type:varchar(100)" json:"full_name"`
+	Email           string    `gorm:"type:varchar(100)" json:"email"`
+	Phone           string    `gorm:"type:varchar(20)" json:"phone"`
+	BusinessName    string    `gorm:"type:varchar(150)" json:"business_name"`
+	BusinessAddress string    `gorm:"type:text" json:"business_address"`
+	BusinessCategory string   `gorm:"type:varchar(50)" json:"business_category"`
+	Status          string    `gorm:"default:'Pending';type:varchar(20)" json:"status"` // Pending, Approved, Rejected
+	Plan            string    `gorm:"type:varchar(50);default:'UMKM'" json:"plan"`      // UMKM, Bisnis, Franchise
+	POSType         string    `gorm:"type:varchar(50);default:'resto'" json:"pos_type"` // resto, retail, jasa, fashion
+	IsPaid          bool      `gorm:"default:false" json:"is_paid"`
+	CreatedAt       time.Time `json:"created_at"`
 }

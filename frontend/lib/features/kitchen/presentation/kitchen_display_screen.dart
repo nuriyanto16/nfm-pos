@@ -21,10 +21,12 @@ final kitchenOrdersProvider = StreamProvider.autoDispose<List<dynamic>>((ref) as
       allRows = res.data as List<dynamic>;
     }
     
-    // Filter: Show Pending, Proses, and Siap (even if paid, as long as not Selesai)
+    // Filter: Show Pending, Proses, and Siap (only for Resto order source)
     return allRows.where((o) {
       final status = o['status'];
-      return status == 'Pending' || status == 'Proses' || status == 'Siap';
+      final source = o['order_source']?.toString().toLowerCase() ?? 'resto';
+      final isResto = source == 'resto';
+      return isResto && (status == 'Pending' || status == 'Proses' || status == 'Siap');
     }).toList();
   }
 

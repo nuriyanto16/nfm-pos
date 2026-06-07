@@ -16,6 +16,7 @@ class FloatingChatbot extends StatefulWidget {
 
 class _FloatingChatbotState extends State<FloatingChatbot>
     with SingleTickerProviderStateMixin {
+  final _iframeKey = GlobalKey();
   bool _isExpanded = false;
   final String _viewId = 'chatbot-iframe';
   late final AnimationController _animController;
@@ -173,8 +174,11 @@ class _FloatingChatbotState extends State<FloatingChatbot>
                         ),
                       ),
                       // ── IFrame ──
-                      const Expanded(
-                        child: HtmlElementView(viewType: 'chatbot-iframe'),
+                      Expanded(
+                        child: HtmlElementView(
+                          key: _iframeKey,
+                          viewType: 'chatbot-iframe',
+                        ),
                       ),
                     ],
                   ),

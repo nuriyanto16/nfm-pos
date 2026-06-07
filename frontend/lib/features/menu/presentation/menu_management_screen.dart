@@ -5,13 +5,15 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/pagination_controls.dart';
+import '../../../shared/widgets/skeleton.dart';
 import 'menu_provider.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
 
 final categoryListProvider = FutureProvider<List<dynamic>>((ref) async {
   final dio = ref.read(dioProvider);
-  final res = await dio.get('categories', queryParameters: {'limit': 100});
+  final posType = ref.watch(menuPosTypeProvider);
+  final res = await dio.get('categories', queryParameters: {'limit': 100, 'pos_type': posType});
   if (res.data is Map) return res.data['rows'] as List<dynamic>;
   return res.data as List<dynamic>;
 });
@@ -31,7 +33,7 @@ final companyDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
   return res.data as List<dynamic>;
 });
 
-// ─── Dummy food images ────────────────────────────────────────────────────────
+// ─── Dummy images ────────────────────────────────────────────────────────────
 const _dummyFoodImages = [
   'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=300&fit=crop',
   'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&h=300&fit=crop',
@@ -45,11 +47,45 @@ const _dummyFoodImages = [
   'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=300&h=300&fit=crop',
 ];
 
-String _getDummyImage(int index) => _dummyFoodImages[index % _dummyFoodImages.length];
+const _dummyFashionImages = [
+  'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=300&h=300&fit=crop',
+];
+
+const _dummyRetailImages = [
+  'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=300&h=300&fit=crop',
+];
+
+const _dummyJasaImages = [
+  'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1521566652839-697aa473761a?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1582733712530-09ac7c6c63cf?w=300&h=300&fit=crop',
+];
+
+String _getDummyImage(String posType, int index) {
+  switch (posType) {
+    case 'fashion':
+      return _dummyFashionImages[index % _dummyFashionImages.length];
+    case 'retail':
+      return _dummyRetailImages[index % _dummyRetailImages.length];
+    case 'jasa':
+      return _dummyJasaImages[index % _dummyJasaImages.length];
+    default:
+      return _dummyFoodImages[index % _dummyFoodImages.length];
+  }
+}
 
 // ─── Menu Management Screen ───────────────────────────────────────────────────
 class MenuManagementScreen extends ConsumerStatefulWidget {
-  const MenuManagementScreen({super.key});
+  final String initialType;
+  const MenuManagementScreen({super.key, this.initialType = 'resto'});
 
   @override
   ConsumerState<MenuManagementScreen> createState() => _MenuManagementScreenState();
@@ -63,6 +99,25 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(menuPosTypeProvider.notifier).state = widget.initialType;
+      ref.read(menuManagementProvider.notifier).setPosType(widget.initialType);
+      ref.read(categoryManagementProvider.notifier).fetchCategories(page: 1, posType: widget.initialType);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant MenuManagementScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialType != widget.initialType) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(menuPosTypeProvider.notifier).state = widget.initialType;
+          ref.read(menuManagementProvider.notifier).setPosType(widget.initialType);
+          ref.read(categoryManagementProvider.notifier).fetchCategories(page: 1, posType: widget.initialType);
+        }
+      });
+    }
   }
 
   @override
@@ -73,24 +128,109 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final activePosType = ref.watch(menuPosTypeProvider);
+    final isRestoMode = activePosType == 'resto';
+
+    String getTitle() {
+      switch (activePosType) {
+        case 'fashion':
+          return 'Manajemen Barang (Fashion)';
+        case 'retail':
+          return 'Manajemen Barang (Retail)';
+        case 'jasa':
+          return 'Manajemen Layanan Jasa';
+        default:
+          return 'Manajemen Menu Resto';
+      }
+    }
+
+    String getTab1Label() {
+      if (activePosType == 'jasa') return 'Daftar Layanan';
+      if (activePosType == 'resto') return 'Daftar Item';
+      return 'Daftar Barang';
+    }
+
+    String getTab2Label() {
+      if (activePosType == 'jasa') return 'Kategori Layanan';
+      if (activePosType == 'resto') return 'Kategori';
+      return 'Kategori Barang';
+    }
+
+    IconData getTab1Icon() {
+      switch (activePosType) {
+        case 'fashion':
+          return Icons.checkroom;
+        case 'retail':
+          return Icons.storefront;
+        case 'jasa':
+          return Icons.dry_cleaning;
+        default:
+          return Icons.restaurant_menu;
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manajemen Menu'),
+        title: Text(getTitle()),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.restaurant_menu), text: 'Menu Item'),
-            Tab(icon: Icon(Icons.category), text: 'Kategori'),
+          tabs: [
+            Tab(icon: Icon(getTab1Icon()), text: getTab1Label()),
+            Tab(icon: const Icon(Icons.category), text: getTab2Label()),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _MenuTab(onRefresh: () => ref.read(menuManagementProvider.notifier).fetchMenus()),
-          _CategoryTab(onRefresh: () => ref.read(categoryManagementProvider.notifier).fetchCategories()),
+          if (widget.initialType != 'resto')
+            Container(
+              color: colorScheme.surfaceContainerLow,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _posTypeChip('fashion', 'Fashion', Icons.checkroom),
+                    const SizedBox(width: 8),
+                    _posTypeChip('retail', 'Retail / Toko', Icons.storefront),
+                    const SizedBox(width: 8),
+                    _posTypeChip('jasa', 'Jasa (Laundry/Salon)', Icons.dry_cleaning),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _MenuTab(onRefresh: () => ref.read(menuManagementProvider.notifier).fetchMenus()),
+                _CategoryTab(onRefresh: () => ref.read(categoryManagementProvider.notifier).fetchCategories()),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _posTypeChip(String value, String label, IconData icon) {
+    final activePosType = ref.watch(menuPosTypeProvider);
+    final isSelected = activePosType == value;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ChoiceChip(
+      avatar: Icon(icon, size: 18, color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant),
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: colorScheme.primary,
+      onSelected: (selected) {
+        if (selected) {
+          ref.read(menuPosTypeProvider.notifier).state = value;
+          ref.read(menuManagementProvider.notifier).setPosType(value);
+          ref.read(categoryManagementProvider.notifier).fetchCategories(page: 1, posType: value);
+        }
+      },
     );
   }
 }
@@ -105,6 +245,7 @@ class _MenuTab extends ConsumerWidget {
     final state = ref.watch(menuManagementProvider);
     final notifier = ref.read(menuManagementProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
+    final activePosType = ref.watch(menuPosTypeProvider);
 
     return Column(
       children: [
@@ -135,30 +276,167 @@ class _MenuTab extends ConsumerWidget {
         Expanded(
           child: Column(
             children: [
-              if (state.isLoading) const LinearProgressIndicator(),
               Expanded(
-                child: state.items.isEmpty && !state.isLoading
-                  ? const Center(child: Text('Tidak ada menu ditemukan'))
-                  : GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 320,
-                        childAspectRatio: 0.85,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: state.items.length,
-                      itemBuilder: (context, i) {
-                        final m = state.items[i];
-                        return _MenuCard(
-                          menu: m,
-                          index: i,
-                          onEdit: () => _showMenuForm(context, ref, m),
-                          onDelete: () => _deleteMenu(context, ref, m['id']),
-                          onRecipe: () => _showRecipeDialog(context, m),
-                        );
-                      },
-                    ),
+                child: state.isLoading
+                    ? (activePosType == 'resto'
+                        ? GridView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 320,
+                              childAspectRatio: 0.85,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                            ),
+                            itemCount: 6,
+                            itemBuilder: (context, i) => const CardSkeleton(),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: List.generate(
+                                5,
+                                (index) => const Padding(
+                                  padding: EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    children: [
+                                      Skeleton(width: 40, height: 40, borderRadius: 8),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Skeleton(width: 150, height: 16),
+                                            SizedBox(height: 6),
+                                            Skeleton(width: 100, height: 12),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ))
+                    : state.items.isEmpty
+                        ? const Center(child: Text('Tidak ada menu ditemukan'))
+                        : activePosType == 'resto'
+                      ? GridView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 320,
+                            childAspectRatio: 0.85,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: state.items.length,
+                          itemBuilder: (context, i) {
+                            final m = state.items[i];
+                            return _MenuCard(
+                              menu: m,
+                              index: i,
+                              onEdit: () => _showMenuForm(context, ref, m),
+                              onDelete: () => _deleteMenu(context, ref, m['id']),
+                              onRecipe: () => _showRecipeDialog(context, m),
+                            );
+                          },
+                        )
+                      : SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Container(
+                              width: MediaQuery.of(context).size.width > 800
+                                  ? MediaQuery.of(context).size.width - 272
+                                  : 800,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: DataTable(
+                                headingRowColor: WidgetStateProperty.all(colorScheme.surfaceContainerHighest.withOpacity(0.5)),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                columns: const [
+                                  DataColumn(label: Text('GAMBAR', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('NAMA ITEM', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('KATEGORI', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('HARGA', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('STOK', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('AKSI', style: TextStyle(fontWeight: FontWeight.bold))),
+                                ],
+                                rows: List.generate(state.items.length, (index) {
+                                  final m = state.items[index];
+                                  final isAvailable = m['is_available'] == true;
+                                  final hasImage = m['image_url'] != null && m['image_url'].toString().isNotEmpty;
+                                  final imgBase = ref.watch(imageBaseUrlProvider);
+
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: SizedBox(
+                                            width: 40,
+                                            height: 40,
+                                            child: hasImage
+                                                ? Image.network(
+                                                    '$imgBase${m['image_url']}',
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => Image.network(
+                                                      _getDummyImage(activePosType, index),
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  )
+                                                : Image.network(
+                                                    _getDummyImage(activePosType, index),
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(Text(m['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                      DataCell(Text(m['category']?['name'] ?? '-')),
+                                      DataCell(Text(formatRupiah((m['price'] as num).toDouble()))),
+                                      DataCell(Text('${m['stock'] ?? 0}')),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isAvailable ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            isAvailable ? 'AKTIF' : 'NONAKTIF',
+                                            style: TextStyle(
+                                              color: isAvailable ? Colors.green : Colors.red,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.edit_outlined, size: 20),
+                                              onPressed: () => _showMenuForm(context, ref, m),
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.delete_outline, size: 20, color: colorScheme.error),
+                                              onPressed: () => _deleteMenu(context, ref, m['id']),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ),
+                            ),
+                          ),
+                        ),
               ),
               PaginationControls(
                 currentPage: state.currentPage,
@@ -229,6 +507,7 @@ class _MenuCard extends ConsumerWidget {
     final isAvailable = menu['is_available'] == true;
     final hasImage = menu['image_url'] != null && menu['image_url'].toString().isNotEmpty;
     final imgBase = ref.watch(imageBaseUrlProvider);
+    final activePosType = ref.watch(menuPosTypeProvider);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -250,13 +529,13 @@ class _MenuCard extends ConsumerWidget {
                           '$imgBase${menu['image_url']}',
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Image.network(
-                            _getDummyImage(index),
+                            _getDummyImage(activePosType, index),
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Icon(Icons.fastfood, size: 48, color: colorScheme.outline),
                           ),
                         )
                       : Image.network(
-                          _getDummyImage(index),
+                          _getDummyImage(activePosType, index),
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Icon(Icons.fastfood, size: 48, color: colorScheme.outline),
                         ),
@@ -424,7 +703,11 @@ class _CategoryTab extends ConsumerWidget {
               if (nameCtrl.text.isEmpty) return;
               try {
                 final dio = ref.read(dioProvider);
-                final data = {'name': nameCtrl.text, 'description': descCtrl.text};
+                final data = {
+                  'name': nameCtrl.text,
+                  'description': descCtrl.text,
+                  'pos_type': cat != null ? cat['pos_type'] : ref.read(menuPosTypeProvider),
+                };
                 if (cat != null) {
                   await dio.put('categories/${cat['id']}', data: data);
                 } else {
@@ -468,10 +751,12 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
   bool _isSaving = false;
   String? _imageUrl;
   bool _isUploading = false;
+  String _selectedPosType = 'resto';
 
   @override
   void initState() {
     super.initState();
+    _selectedPosType = ref.read(menuPosTypeProvider);
     if (widget.menu != null) {
       final m = widget.menu!;
       _nameController.text = m['name'] ?? '';
@@ -483,6 +768,7 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
       _selectedCompanyId = m['company_id'];
       _isAvailable = m['is_available'] ?? true;
       _imageUrl = m['image_url'];
+      _selectedPosType = m['pos_type'] ?? 'resto';
     }
   }
 
@@ -608,6 +894,26 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
                   },
                 ),
                 const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedPosType,
+                  decoration: const InputDecoration(labelText: 'Tipe POS *', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'resto', child: Text('F&B (Resto/Cafe)')),
+                    DropdownMenuItem(value: 'fashion', child: Text('POS Fashion')),
+                    DropdownMenuItem(value: 'retail', child: Text('POS Retail/Toko')),
+                    DropdownMenuItem(value: 'jasa', child: Text('POS Jasa (Laundry/Salon)')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() {
+                        _selectedPosType = v;
+                        _selectedCategoryId = null; // Reset category
+                      });
+                      ref.read(menuPosTypeProvider.notifier).state = v;
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
                 catsAsync.when(
                   loading: () => const LinearProgressIndicator(),
                   error: (_, __) => const Text('Error load category'),
@@ -709,6 +1015,7 @@ class _MenuFormDialogState extends ConsumerState<_MenuFormDialog> {
         'stock': int.tryParse(_stockController.text) ?? 0,
         'is_available': _isAvailable,
         'image_url': _imageUrl,
+        'pos_type': _selectedPosType,
       };
       if (widget.menu != null) {
         await dio.put('menus/${widget.menu!['id']}', data: data);
